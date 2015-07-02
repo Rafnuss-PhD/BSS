@@ -92,7 +92,7 @@ U=cell(scale,1);
 dy=cell(scale,1);
 
 for s=1:scale % for each scale
-    % Alocating space for resulting field. The third dimension is for at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
+    % Alocating space for resulting field. The third dimension is fo at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
     Y{s}.x=grid{s}.x; Y{s}.y=grid{s}.y; Y{s}.X=grid{s}.X; Y{s}.Y=grid{s}.Y;
     Y{s}.m=nan(grid{s}.ny,grid{s}.nx); % matrix des resutlats
     
@@ -100,7 +100,6 @@ for s=1:scale % for each scale
     if s~=1
         Y{s}.m( 1:(grid{s-1}.dy/grid{s}.dy):end, 1:(grid{s-1}.dx/grid{s}.dx):end) = Y{s-1}.m;
     end
-    
     
     % Assimilate the hard data (X) into the grid
     hard_data_idx=find(ismember(X.y,grid{s}.Y)&ismember(X.x,grid{s}.X));

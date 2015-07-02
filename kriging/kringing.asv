@@ -48,9 +48,7 @@ end
 % Combine SuperBlock Point and Spiral Search point.
 sel_g=[sel_sb;unique([sel_ss{1};sel_ss{2};sel_ss{3};sel_ss{4}],'rows')];
 
-if ~(size(unique(sel_g(:,1:2),'rows'),1)==size(sel_g,1))
-    error('None unique point for kriging: ')
-end
+if 
 
 n=size(sel_g,1);
 if any(n<10)

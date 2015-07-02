@@ -44,7 +44,7 @@ ptmodnsc=10; % Normal score Transform threashold : compute bscore every ptmodsc 
 % the normalized distence and the order of visit of the cells.
 % Spiral Search setting: previously data (on grid location)
 [k.ss.el.X, k.ss.el.Y] = meshgrid(0:max(ceil(k.range(1)*k.wradius/grid.dx),ceil(k.range(2)*k.wradius/grid.dy)));% grid of searching windows
-[k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid.dx, k.ss.el.Y*grid.dy, k.rotation, k.range); % transforms the grid
+[k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid.dx, k.ss.el.Y*grid.dy, k.ang, k.range); % transforms the grid
 k.ss.el.dist = sqrt(k.ss.el.X_T.^2 + k.ss.el.Y_T.^2);
 [k.ss.el.dist_s, k.ss.el.dist_idx] = sort(k.ss.el.dist(:)); % sort according distence.
 k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); k.ss.el.Y_s=k.ss.el.Y(k.ss.el.dist_idx);

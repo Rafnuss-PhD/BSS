@@ -29,7 +29,7 @@ k.sb.y=k.sb.y(1:end-1)+k.sb.dy/2;
 
 % Creation of the superblock grid windows search 
 [el_X, el_Y] = meshgrid(0:max(ceil(k.range(1)*k.wradius/k.sb.dx),ceil(k.range(2)*k.wradius/k.sb.dy)));% grid of searching windows in supergrid unit. this is a quadrant
-[el_X_T, el_Y_T]=rotredtrans(el_X*k.sb.dx, el_Y*k.sb.dy, k.ang, k.range); % transforms the grid in unit
+[el_X_T, el_Y_T]=rotredtrans(el_X*k.sb.dx, el_Y*k.sb.dy, k.rotation, k.range); % transforms the grid in unit
 el_dist = sqrt(el_X_T.^2 + el_Y_T.^2); % distence from the point 0,0
 el_X_s=el_X(el_dist<k.wradius); el_Y_s=el_Y(el_dist<k.wradius); % All point inside the windows search
 
@@ -50,10 +50,10 @@ for i=1:k.sb.nx
     end
 end
 
-% hold on; i=10; j=6;
+% figure; hold on; i=10; j=6;
 % mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.nx+1,k.sb.ny+1))
 % plot([X.x'; k.sb.x(X.sb_x)],[X.y'; k.sb.y(X.sb_y)])
 % plot(X.x, X.y,'o')
 % plot(X.x(k.sb.mask(j,i,:)), X.y(k.sb.mask(j,i,:)),'x','lineWidth',3)
 % plot(k.sb.x(i), k.sb.y(j),'or')
-% axis equal
+
