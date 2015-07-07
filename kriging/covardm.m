@@ -28,17 +28,17 @@ function k=covardm(x,x0,model,c)
 % can be added here.
 k=[];
 Gam=['h==0                                                           '; %nugget
-    'exp(-h)                                                        '; %exponential
-    'exp(-(h).^2)                                                   '; %gaussian
-    '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)                          '; %spherical
-    '1-h                                                            '; %linear
-    '7*min(h,1).^2-8.75*min(h,1).^3+3.5*min(h,1).^5-0.75*min(h,1).^7'; %modele cubique
-    '(h.^2).*log(max(h,eps))                                        '; %spline plaque mince
-    '(h.^2+1).^(-0.5)                                               '; %modèle gravimétrique (Cauchy avec b=0.5)
-    '(h.^2+1).^(-1.5)                                               '; %modele magnétique (Cauchy avec b=1.5) 
-    'sin(max(eps,h*2*pi))./max(eps,h*2*pi)                          '; %effet de trou sinusoidal
-    'cos(h*2*pi)                                                    '; %effet de trou cosinusoidal
-    '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)+1-h                      '];%spherique+lineaire
+     'exp(-h)                                                        '; %exponential
+     'exp(-(h).^2)                                                   '; %gaussian
+     '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)                          '; %spherical
+     '1-h                                                            '; %linear
+     '7*min(h,1).^2-8.75*min(h,1).^3+3.5*min(h,1).^5-0.75*min(h,1).^7'; %modele cubique
+     '(h.^2).*log(max(h,eps))                                        '; %spline plaque mince
+     '(h.^2+1).^(-0.5)                                               '; %modèle gravimétrique (Cauchy avec b=0.5)
+     '(h.^2+1).^(-1.5)                                               '; %modele magnétique (Cauchy avec b=1.5) 
+     'sin(max(eps,h*2*pi))./max(eps,h*2*pi)                          '; %effet de trou sinusoidal
+     'cos(h*2*pi)                                                    '; %effet de trou cosinusoidal
+     '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)+1-h                      '];%spherique+lineaire
 
 
 % definition of some constants

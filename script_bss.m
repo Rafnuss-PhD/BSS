@@ -55,9 +55,9 @@ clear i xmax ymax
 % DATA_CREATION function gather all possible way to creat the data. 
 % |method| struct allow for choising which way. See more description in
 % file |data.creation.m|
-method.gen=1;       % Method of generation of g_true, K_true and rho_true | 1: data , 2: generation from equation
+method.gen =1;      % Method of generation of g_true, K_true and rho_true | 1: data , 2: generation from equation
 method.samp=1;      % Method of sampling of K and g | 1: borehole, 2:random
-plotit=1;           % display graphic or not
+plotit=0;           % display graphic or not
 [K_true, g_true, rho_true, K, g, G] = data_creation(grid{scale.n}, method, plotit);
 clear plotit method % not used anymore
 
@@ -66,28 +66,25 @@ clear plotit method % not used anymore
 % scarse point data (g) and grid (G). see more information in |BSGS.m| file
 % edit BSGS.m
 tic; [gG, t.gG_sim] = BSGS(g,G,g_true,grid); t.gG_glo=toc;
-GG.d = gG(:,:,1);
-GG.std = G.std;
+GG.d = gG{end}.m;
+GG.std = G.std; % NOT GOOD
+GG.x=G.x;
+GG.y=G.y;
 return
 
 %% SECOND STEP
 % Generation of the high resolution hydraulic conductivity (gG) from scarce
 % point data (K) and electrical conductivity field. We used the log of k.
-n_sim = 1; % Simulation run number
 K_log=K;
 K_log.d = log10(K.d);
-tic; [kK_log,t.kK] = BSGS(K_log,GG,K_true,n_sim,0);t.KKg=toc;
-kK=10.^kK_log;
+tic; [kK_log,t.kK] = BSGS(K_log,GG,K_true,grid);t.KKg=toc;
+kK=kK_log;
+for i=1:size(kK_log,1)
+    kK{i}.m=10.^kK_log{i}.m;
+end
+
 clear kK_log K_log
 
-
-
-%% FLOW
-% Measure flow in the field
-plotit=1;
-flow(grid,KK,plotit)
-flow(grid,K_true,plotit)
-clear plotit
 
 
 %% PLOTTHEM
@@ -95,23 +92,13 @@ clear plotit
 sub_n=min([n_sim,3])+1;
 
 figure;
-subplot(sub_n,1,1);hold on;
-pcolor(grid.x,grid.y,g_true); plot(grid.x(g.x),grid.y(g.y),'or');xlabel('x[m]');ylabel('y[m]');title('g True Value');shading flat;colorbar;
-for i=2:sub_n
-	subplot(sub_n,1,i);hold on;
-	pcolor(grid.x,grid.y,gG(:,:,i-1)); title(['g Simulated field: ', i-1]);xlabel('x[m]');ylabel('y[m]');shading flat;colorbar;
-end
+subplot(2,1,1); pcolor(grid{end}.x,grid{end}.y,g_true); xlabel('x[m]');ylabel('y[m]');title('True Electrical Conductivity g_{true}');shading flat;colorbar;
+subplot(2,1,2); pcolor(grid{end}.x,grid{end}.y,gG{end}.m); xlabel('x[m]');ylabel('y[m]');title('Simulated Electrical Conductivity gG');shading flat;colorbar;
+
 
 figure;
-subplot(sub_n,1,1);hold on;
-pcolor(grid.x,grid.y,K_true); plot(grid.x(K.x),grid.y(K.y),'or');xlabel('x[m]');ylabel('y[m]');title('K True Value');shading flat;colorbar;
-for i=2:sub_n
-	subplot(sub_n,1,i);hold on;
-	pcolor(grid.x,grid.y,kK(:,:,i-1)); title(['K Simulated field: ', i-1]);xlabel('x[m]');ylabel('y[m]');shading flat;colorbar;
-end
+subplot(2,1,1); pcolor(grid{end}.x,grid{end}.y,K_true);xlabel('x[m]');ylabel('y[m]');title('True Hydraulic conductivity K_{true}');shading flat;colorbar;
+subplot(2,1,2); pcolor(grid{end}.x,grid{end}.y,kK{end}.m);xlabel('x[m]');ylabel('y[m]');title('Simulated Hydraulic conductivity kK');shading flat;colorbar;
 
-figure; hold on; 
-plot([1000:1000:(1000*length(t.gG)-1) grid.nx*grid.ny-length(g.d)],t.gG)
-plot([1000:1000:(1000*length(t.kK)-1) grid.nx*grid.ny-length(K.d)],t.kK)
-title('Time Spend');xlabel('pt simulated [m]');ylabel('Time elpase [s]');
-legend('g-simulation','K simulation')
+
+%% Saveit

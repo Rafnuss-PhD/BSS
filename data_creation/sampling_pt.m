@@ -22,9 +22,10 @@ end
 
 switch method
     case 1 % select all point in k boreholes equaly spaced
-        k=6; % number of borehole;
+        k=4; % number of borehole;
         %  positions of conditioning data
-        bor_pos_x = ceil(linspace(1,grid.nx,k));
+        
+        bor_pos_x = ceil(grid.nx/k/2:grid.nx/k:grid.nx);
         bor_pos_y = 1:grid.ny;
         [x_x, x_y] = meshgrid(grid.x(bor_pos_x),grid.y(bor_pos_y));
         

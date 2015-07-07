@@ -22,7 +22,7 @@
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
 % * *Date:* 02.02.2015
 
-function [Y, U]=BSGS(X,Z,Y_true,grid)
+function [Y, U]=BSGS(X,Z,~,grid)
 % force input in column
 X.x=X.x(:);X.y=X.y(:);Z.x=Z.x(:);Z.y=Z.y(:);
 figure;
@@ -79,6 +79,7 @@ ny = 20;
 [k, X] = SuperBlockGridCreation(k, nx, ny, grid{end}.x(end), grid{end}.y(end), X);
 clear nx ny
 
+
 %% Non-parametric Relationship
 % Link primary and secondary data.
 kernel = kernel_est(X,Z);
@@ -92,7 +93,7 @@ U=cell(scale,1);
 dy=cell(scale,1);
 
 for s=1:scale % for each scale
-    % Alocating space for resulting field. The third dimension is for at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
+    % Allocating space for resulting field. The third dimension is for at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
     Y{s}.x=grid{s}.x; Y{s}.y=grid{s}.y; Y{s}.X=grid{s}.X; Y{s}.Y=grid{s}.Y;
     Y{s}.m=nan(grid{s}.ny,grid{s}.nx); % matrix des resutlats
     
@@ -152,12 +153,12 @@ for s=1:scale % for each scale
     disp(['Simulation finish in : ' num2str(t(s+1)-t(s))])
 end
 
-a=round(sqrt(scale));
-b=ceil(scale/a);
-figure;
-for i=1:scale
-    subplot(a,b,i);
-    hist(dy{i})
-end
+% a=round(sqrt(scale));
+% b=ceil(scale/a);
+% figure;
+% for i=1:scale
+%     subplot(a,b,i);
+%     hist(dy{i})
+% end
 
 end

@@ -83,13 +83,13 @@ g = sampling_pt(grid,g_true,method.samp);
 % 5. Simulate low-resolution grid measurement of G
 G = meas_G_grid(grid,g_true,method.G,plotit);
 
-
 % 6. Plot
 if plotit
     figure;
-    subplot(4,1,1); pcolor(grid.x,grid.y,rho_true); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('True Porosity (rho_{true})'); colorbar;
-    subplot(4,1,2); pcolor(grid.x,grid.y,K_true); shading flat; hold on; plot(K.x, K.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('True Hydraulic Conudctivity (K_{true}) and sampled point location (K)'); colorbar;
-    subplot(4,1,3); pcolor(grid.x,grid.y,g_true); shading flat; hold on; plot(g.x, g.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('True Electrical Conductivity (g_{true}) and sampled point location (g)'); colorbar;
-    subplot(4,1,4); pcolor(grid.x,grid.y,G.d); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('Electrical Conductivity Tomography(G)'); colorbar;
+    % subplot(4,1,1); pcolor(grid.x,grid.y,rho_true); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('True Porosity (rho_{true})'); colorbar;
+    subplot(4,1,1); pcolor(grid.x,grid.y,K_true); shading flat; hold on; plot(K.x, K.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('True Hydraulic Conudctivity K_{true} and sampled point location K'); colorbar;
+    subplot(4,1,2); pcolor(grid.x,grid.y,g_true); shading flat; hold on; plot(g.x, g.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('True Electrical Conductivity g_{true} and sampled point location g'); colorbar;
+    subplot(4,1,3); pcolor(grid.x,grid.y,G.d); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('Electrical Conductivity Tomography G'); colorbar;
+    subplot(4,1,4); pcolor(grid.x,grid.y,G.std); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('Electrical Conductivity Tomography error G_{std}'); colorbar;
 end
 end
