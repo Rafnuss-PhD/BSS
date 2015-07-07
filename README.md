@@ -78,15 +78,18 @@ This version is a modification of Paolo's one. It retake the almost the same str
 * possible to comparaison of the previous version (marecott) and mine!
 * an also ordinary kriging
 
-### 5.0: 
-* cleaning of krigreage folder and in BSGS
+### 5.0: Stable version
+* Cleaning : krigreage folder, in root (BSGS) and flow
+* Correct kriging using Covardm (Marecotte), mine wasn't fully working
+* spiral search and superblock grid are fully operational
+* 
 
 
 
 ## ToDo List:
 * Implement an ERT inverse code to generate the Electrical conductivity field
-* Implement the Multiscale Gradual Deformation
-* A way to estimate the kriging making a difference between hard data and previously simulated point.
+* multiple simulation
+* gradual deformation
 
 
 
