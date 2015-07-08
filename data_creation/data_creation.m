@@ -27,10 +27,10 @@ function [K_true, g_true, rho_true, K, g, G] = data_creation(grid, method, ploti
 
 
 % handle function for generating a fiel and all phsical relationship
-f_new_field = @(moy,var,range_x,range_y) fft_ma_perso(grid,moy,var,var,range_x,range_y,0);
+f_new_field = @(grid,covar) fftma(grid.x(1),grid.dx,grid.x(end),grid.y(1),grid.dy,grid.y(end),covar);
 f_Heinz = @(rho,v) 10.^(6.66 *rho - 4.97); % log_10(K) = 6.66 \rho - 4.97 + noise (Heinz et al., 2003)
-f_Heinz_inv = @(K,v) (log_10(K)+4.97)/ 6.66 ; % log_10(K) = 6.66 \rho - 4.97  + noise (Heinz et al., 2003)
-f_Archie = @(rho,v) 43 *rho.^1.4;  % \sigma = \sigma_W \rho ^m  + noise (Archie, 1942)
+f_Heinz_inv = @(K,v) (log10(K)+4.97)/ 6.66 ; % log_10(K) = 6.66 \rho - 4.97  + noise (Heinz et al., 2003)
+f_Archie = @(rho,v) 43 *real(rho.^1.4);  % \sigma = \sigma_W \rho ^m  + noise (Archie, 1942)
 f_Archie_inv = @(sigma,v) (sigma/43).^(1/1.4) ;  % \sigma = \sigma_W \rho ^m  + noise (Archie, 1942)
 f_KC = @(rho,d10,v) 9810/0.001002 * rho.^3./(1-rho).^2 .* d10^2/180; % Kozeny-Carman @20°C
 
@@ -54,20 +54,23 @@ switch method.gen
         method.G=1;
         
     case 2 % from K
-        K_true_n=f_new_field(0,1,27,2.7); % generate a std normal distribution 
+
+        model     = 4; % model type
+        k.rotation  = 0;
+        k.range     = [160;15]; % measure in unit
+        covar.modele = [model k.range(1) k.range(2) k.rotation; 1 1 1 1];
+        covar.c   = [.99; 0.01];
+        K_true_n=f_new_field(grid,covar);
+        % figure;imagesc(K_true_n)
         K_true= 10.^(-3.18 + K_true_n * sqrt(0.36)); % put it as a log normal dist.
         rho_true=f_Heinz_inv(K_true) ; % noise: f_new_field(0,0.025,3.5,1)
         g_true = f_Archie(rho_true); % noise: f_new_field(0,0.25,3.5,1);
-        method.G=3;
+        method.G=2;
+        plotit2=0;
         
+        clear K_true_n covar model
     case 3 % from rho
-        rho_true=f_new_field(.3,.001,27,2.7);
-        assert(all(rho_true(:)>0) && all(rho_true(:)<1),'Some of the porosity is below 0 or above 1')
-        K_true=f_KC(rho_true,0.0001); %f_new_field(0,0.025,3.5,1)
-        assert(all(K_true(:)>0) && all(K_true(:)<1e4),'Some of K is below 0 or above 10000')
-        g_true = f_Archie(rho_true); 
-        assert(all(g_true(:)>0) && all(g_true(:)<1e4),'Some of g is below 0 or above 10000')
-        method.G=3;
+
   
 end
 
@@ -81,13 +84,13 @@ g = sampling_pt(grid,g_true,method.samp);
 
 
 % 5. Simulate low-resolution grid measurement of G
-G = meas_G_grid(grid,g_true,method.G,plotit);
+G = meas_G_grid(grid,g_true,method.G,plotit2);
 
 % 6. Plot
 if plotit
     figure;
     % subplot(4,1,1); pcolor(grid.x,grid.y,rho_true); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('True Porosity (rho_{true})'); colorbar;
-    subplot(4,1,1); pcolor(grid.x,grid.y,K_true); shading flat; hold on; plot(K.x, K.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('True Hydraulic Conudctivity K_{true} and sampled point location K'); colorbar;
+    subplot(4,1,1); pcolor(grid.x,grid.y,log10(K_true)); shading flat; hold on; plot(K.x, K.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('Log True Hydraulic Conudctivity K_{true} and sampled point location K'); colorbar;
     subplot(4,1,2); pcolor(grid.x,grid.y,g_true); shading flat; hold on; plot(g.x, g.y, 'or'); xlabel('x[m]'); ylabel('y [m]'); title('True Electrical Conductivity g_{true} and sampled point location g'); colorbar;
     subplot(4,1,3); pcolor(grid.x,grid.y,G.d); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('Electrical Conductivity Tomography G'); colorbar;
     subplot(4,1,4); pcolor(grid.x,grid.y,G.std); shading flat; xlabel('x[m]'); ylabel('y [m]'); title('Electrical Conductivity Tomography error G_{std}'); colorbar;
