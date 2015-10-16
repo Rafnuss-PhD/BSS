@@ -2,27 +2,28 @@
 % It's a sequential stochatic simulation of a primary variable from
 % combination of sparce primary (X) data and more dence secondary data (Z).
 % The grid is define by the size of the secondary variable (Z). The primary
-% variable can be at any point of this grid (X_x,X_y)
+% variable can be at any point of this grid (X.x,X.y)
 %
 % INPUT:
 %
 % * X.d     : Primary variable (1D-X.n elts)
 % * X.x,y   : x,y-coordinate of the primary variable (1D-X.n elts)
-% * X.y     : y-coordinate of the primary variable (1D-X.n elts)
 % * Z.d     : Secondary variable (2D- grid.nx x grid.n elts)
 % * Z.x,y   : x,y-coordinate of the secondary variable (1D elts)
-% * Z.std   : Secondary variable std error (2D- grid.nx x grid.n elts)
+% * Z.std   : Secondary variable std error (2D-grid.nx x grid.n elts)
 %
 % OUTPUT:
 %
-% * Y_mat   : Simulated Primary variable in matrix (3rd dim for simulation)
-% * U       :
-% * t_sim   : time of simulation
+% * Y       : Simulated Primary variable in matrix
+% * t       : Time of simulations
+% * kernel  : kernel information
+% * k     
 %
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
 % * *Date:* 02.02.2015
 
-function [Y, U]=BSGS(X,Z,~,grid,plotit,n_sim)
+function [Y, t, kernel, k] = BSGS(X,Z,X_true,grid,parm)
+t.tic.global = tic;
 % force input in column
 X.x=X.x(:);X.y=X.y(:);Z.x=Z.x(:);Z.y=Z.y(:);
 
@@ -36,112 +37,106 @@ assert(size(X.y,2)==1,'X.y is not a vertical vector 1D');
 assert(all(size(X.y)==size(X.x)),'X.x and X.y don''t have the same dimension');
 assert(all(size(X.d)==size(X.x)),'X.d and X.x (or X.y) don''t have the same dimension');
 
-%% Allocate space and setting basic information.
 
 %%
-% * *KRIGING INPUT*
+% * *VARIOGRAM INPUT*
 
-model     = 4; % model type
+if parm.fitvar
+    [k.range, fig.varfit] = fit_variogramm(X,Z,parm.plot.fitvar);
+    disp(['The fitted range is: ', num2str(k.range)])
+    keyboard
+else % default variogramm 
+    k.range = [100 10];
+end
+k.rotation = 0;
+k.model = [4 k.range k.rotation; 1 1 1 1];
 k.wradius = 1.3;
-k.rotation  = 0;
-k.range     = [160; 15]; % measure in unit
-
-k.model = [model k.range(1) k.range(2) k.rotation; 1 1 1 1];
 k.var   = [.99; 0.01];
-
-k.nb_neigh  = [4 4 4 4; 15 15 15 15]; % min and max number of point
-
+k.nb_neigh  = [5 5 5 5; 30 30 30 30]; % min and max number of point
 
 %%
-% * *SEARCHING WINDOWS:* Super Block Grid
-% creationg of the superblock grid
-nx = 20; % number of superblock grid
-ny = 20;
-nb_max =50; % max number of point to take in the mask (random sampling)
-plotit = 0; % plot
-[k, X] = SuperBlockGridCreation(k, nx, ny, grid{end}.x(end), grid{end}.y(end), X, nb_max, plotit);
-clear nx ny nb_max plotit
-
+% * *SEARCHING WINDOWS:* 
+% creationg of the Super Block Grid 
+if parm.neigh
+    nx = 20; % number of superblock grid
+    ny = 20;
+    nb_max = 40; % max number of point to take in the mask (random sampling)
+    [k, X] = SuperBlockGridCreation(k, nx, ny, grid{end}.x(end), grid{end}.y(end), X, nb_max, parm.plot.sb);
+    clear nx ny nb_max plotit2
+end
 
 %% Non-parametric Relationship
 % Link primary and secondary data.
-kernel = kernel_est(X,Z);
-
+kernel = kernel_est(X, Z, parm.plot.kernel);
 
 %%
 % * *NSCORE*
-Nscore = nscore_perso(X.d,'linear',kernel);
-
+Nscore = nscore_perso(X.d, 'linear', 'linear', kernel, parm.plot.ns);
+kernel.y_ns = Nscore.forward(kernel.y); % convert the kernel grid in normal space
+[~,kernel.y_ns_unique,~] = unique(kernel.y_ns); % find the unique value as during transformation some become very similar
 
 %%
-% * *SECONDARY*
-scale=numel(grid);
-Y=cell(scale,1);
-U=cell(scale);
-dy=cell(scale,1);
+% * *Scale to simulate*
+assert(max(parm.scale)<=numel(grid))
+Y=cell(numel(parm.scale),1);
+X.x_ini = X.x; X.y_ini = X.y; X.d_ini = X.d;
 
-plotit=0;
-if plotit
-    figure('units','normalized','outerposition',[0 0 1 1]);
-end
+if parm.neigh; k.sb.mask_ini = k.sb.mask; end
 
-for s=1:scale % for each scale
+for scale_i=1:numel(parm.scale) % for each scale
+    t.tic.scale = tic;
+    s = parm.scale(scale_i);
     % Allocating space for resulting field. The third dimension is for at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
-    Y{s}.x=grid{s}.x; Y{s}.y=grid{s}.y; Y{s}.X=grid{s}.X; Y{s}.Y=grid{s}.Y; Y{s}.nx=grid{s}.nx; Y{s}.ny=grid{s}.ny;
-    Y{s}.m=repmat({nan(grid{s}.ny,grid{s}.nx)},n_sim,1); % matrix des resutlats
+    Y{scale_i}.x=grid{s}.x; 
+    Y{scale_i}.y=grid{s}.y; 
+    Y{scale_i}.X=grid{s}.X; 
+    Y{scale_i}.Y=grid{s}.Y; 
+    Y{scale_i}.nx=grid{s}.nx; 
+    Y{scale_i}.ny=grid{s}.ny;
+    Y{scale_i}.m=repmat({nan(grid{s}.ny,grid{s}.nx)},parm.n_realisation,1); % matrix des resutlats
     
-    % populate the grid from previous scale.
-    if s~=1
-        for i_sim=1:n_sim
-            Y{s}.m{i_sim}( 1:(grid{s-1}.dy/grid{s}.dy):end, 1:(grid{s-1}.dx/grid{s}.dx):end) = Y{s-1}.m{i_sim};
+    % Populate the grid from previous scale.
+    if scale_i~=1 % not at first scale
+        for i_sim=1:parm.n_realisation
+            Y{scale_i}.m{i_sim}( 1:(grid{s-1}.dy/grid{s}.dy):end, 1:(grid{s-1}.dx/grid{s}.dx):end) = Y{s-1}.m{i_sim};
         end
     end
     
     % Assimilate the hard data (X) into the grid
     hard_data_idx=find(ismember(X.y,grid{s}.Y)&ismember(X.x,grid{s}.X));
-    for i_sim=1:n_sim
+    for i_sim=1:parm.n_realisation
         for hd=1:numel(hard_data_idx)
-            Y{s}.m{i_sim}(X.x(hard_data_idx(hd))==grid{s}.X & X.y(hard_data_idx(hd))==grid{s}.Y) = X.d(hard_data_idx(hd));
+            Y{scale_i}.m{i_sim}(X.x(hard_data_idx(hd))==grid{s}.X & X.y(hard_data_idx(hd))==grid{s}.Y) = X.d(hard_data_idx(hd));
         end
     end
-    % remove the assimilated data from X.
+    
+    % Remove the assimilated data from X.
     X.d(hard_data_idx)=[];
     X.x(hard_data_idx)=[];
     X.y(hard_data_idx)=[];
-    k.sb.mask(:,:,hard_data_idx)=[];
+    if parm.neigh; k.sb.mask(:,:,hard_data_idx)=[];  end
     X.n=numel(X.d);
     clear hd i_sim hard_data_idx
     
-    
-    %% Generate the order for visting cells
-    % Randomly permute the cell not known (to be visited). And generate the
-    % Y.x and Y.y coordinate in a random order.
-    % ATTENTION: the order is the same for all simulation but could be different
-    rng('shuffle')
-    Y{s}.sim.xy=grid{s}.xy(isnan(Y{s}.m{1}));
-    Y{s}.sim.n=numel(Y{s}.sim.xy);
-    Y{s}.sim.xy_r=Y{s}.sim.xy(randperm(Y{s}.sim.n)); % randomly permutate the ordered vector of index of Y.xy
-    [Y{s}.sim.x_r,Y{s}.sim.y_r] = ind2sub([grid{s}.ny, grid{s}.nx],Y{s}.sim.xy_r); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
-    
-    %%
-    % * *RANDOM NORMAL FIELD* This create the random Normal distribution used for sampling the posteriori distribution at each point.
-    U{s} = randn(Y{s}.sim.n,n_sim); % random field
-    
-    
-    %% Simulation Loop
-    % Here start stopeach simulation loop
-    [Y{s}.m, dy{s}] = BSGS_pt(X, Z, Y{s}, normcdf(U{s}), kernel, Nscore, k, grid{s});
-    
-    if plotit
-        subplot(scale,1,s);  hold on;axis tight
-        imagesc(Y{s}.x,Y{s}.y,Y{s}.m{end})
-        %scatter(Y{s}.X(:),Y{s}.Y(:),Y{s}.m(:))
-        scatter(X.x,X.y,[],X.d,'o','filled','MarkerEdgeColor','k')
-    end
-    
-    t(s+1)=toc;
-    disp(['Simulation finish in : ' num2str(t(s+1)-t(s))])
+    % Simulation
+    [Y{scale_i}.m, Y{scale_i}.m_ns] = BSGS_s(X, Z, Y{scale_i}, kernel, Nscore, k, grid{s}, parm);
+   
+    % display info
+    disp(['Simulation ' num2str(scale_i) '/' num2str(numel(parm.scale)) ' finished in : ' num2str(toc(t.tic.scale))])
+    t.scale{scale_i} = toc(t.tic.scale);
 end
 
+X.x = X.x_ini; X.y = X.y_ini; X.d = X.d_ini; X.n=numel(X.d);
+if parm.neigh; k.sb.mask = k.sb.mask_ini; end
+clear X.d_ini X.y_ini X.x_ini k.sb.mask_ini
+
+t.global = toc(t.tic.global);
+clear t.tic
+
+
+%% Save it
+if parm.saveit
+    save(['result/', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM'), '.mat'], 'parm', 'Y', 'grid', 't', 'X', 'Z', 'X_true', 'k', 'kernel', 'Nscore')
+end
 
 end

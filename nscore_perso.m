@@ -1,39 +1,109 @@
 %% NSCORE_PERSO
-% This function is computing the Normal zscore transform of the input 
-% vector the function return two fonction handle : one for the normal transform 
-% and the other one for the back-transform. The function use the inputed 
-% vector to create the normal transform. Then using interpolation, the 
+% This function is computing the Normal zscore transform of the input
+% vector the function return two fonction handle : one for the normal transform
+% and the other one for the back-transform. The function use the inputed
+% vector to create the normal transform. Then using interpolation, the
 % function handle are created.
 %
 % INPUT:
 % * X           : Input vector
 %
 % OUTPUT:
-% * NscoreT     : 
-% * NscoreTinv  : 
+% * NscoreT     :
+% * NscoreTinv  :
 %
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
 % * *Date:* 29.01.2015
 
-function Nscore=nscore_perso(X,method,kernel)
+function Nscore = nscore_perso(X,method,extrapolationMethod,kernel,plotit)
 
 % Compute the empirical cdf
 [f,x] = ecdf(X);
 
-% Modify the step-like cdf to a linear one. tail extrapolation : eps to
-% avoid 0 and 1 that norminv() doesn't like...
-x = x(2:end); 
+% ecdf compute the step function like because it is empirical, and there is
+% one step per value of X (the height of the step is constent). The real
+% pdf of this variable is something (no exacly, but closer) to a linear
+% extrapolation between the center of the step. In order to get these
+% point, we average the value of x and f:
+x = x(2:end);
 f = (f(1:end-1)+f(2:end))/2;
-x = [kernel.y(1)-1 ; x(1)-f(1)*(x(2)-x(1))/((f(2)-f(1)));  x;  x(end)+(1-f(end))*((x(end)-x(end-1))/(f(end)-f(end-1))) ; kernel.y(end)+1];
-f = [0+eps; 0+2*eps; f; 1-2*eps; 1-eps];
 
-NscoreT_F = griddedInterpolant(x,f,method);
-NscoreTinv_F = griddedInterpolant(f,x,method);
+% Now, our problem is to find a good extrapolation at each tail. This is
+% important because of that : the prior pdf is estimate in the normal space and back
+% transform to initial space to do the sampling. Then the value is
+% transform to to normal space for the next prior estimate (kriging).
+%
+% After trying this:
+% x = [kernel.y(1)-1 ; x(1)-f(1)*(x(2)-x(1))/((f(2)-f(1)));  x;  x(end)+(1-f(end))*((x(end)-x(end-1))/(f(end)-f(end-1))) ; kernel.y(end)+1];
+% f = [0+eps; 0+2*eps; f; 1-2*eps; 1-eps];
+% x = [kernel.y(1); x; kernel.y(end)];
+%f = [eps; f; 1-eps];
+%
+% The solution was to fit a expenential, between the first point of the
+% kernel and the first point of the ecdf, then use the point of the kernel
+% as ...
+options = fitoptions('Weights',[1 10000 1 1 1 1]); % trick to force the point at x(1)
+f_low=fit([kernel.y(1); x(1:5)],[eps; f(1:5)],'exp1',options);
+% figure;plot(f_low,[kernel.y(1); x(1:5)],[eps; f(1:5)])
+options = fitoptions('Weights',[1 1 1 1 10000 1]);
+f_high=fit([x(end-4:end); kernel.y(end)],1-[f(end-4:end); 1-eps],'exp1',options);
+% figure;plot(f_high,[x(end-5:end); kernel.y(end)],1-[f(end-5:end); 1-eps])
+
+x2 = [kernel.y(kernel.y<x(1))                ; x ; kernel.y(kernel.y>x(end))];
+f2 = [feval(f_low,kernel.y(kernel.y<x(1)))   ; f ; 1-feval(f_high,kernel.y(kernel.y>x(end))) ];
+
+if any(~diff(f2)>0)
+    warning('your limit are too concervative, we fixed this by adding eps... but keep in mind')
+    id=find(diff(f2)<eps);
+    f2(id)=f2(id)+eps*(1:(numel(id)))';
+    assert(any(diff(f2)>0))
+end
+
+
+Nscore.T_F = griddedInterpolant(x2,f2,method,extrapolationMethod);
+
+
+Nscore.Tinv_F = griddedInterpolant(f2,x2,method,extrapolationMethod);
 
 % Function of Normal Score Transform
-Nscore.forward = @(y) norminv(NscoreT_F(y));
-Nscore.inverse = @(y) NscoreTinv_F(normcdf(y));
+Nscore.forward = @(y) norminv( min([ 1-eps*ones(numel(y),1) max([ eps*ones(numel(y),1) Nscore.T_F(y)],[],2) ],[],2));
+Nscore.inverse = @(y) Nscore.Tinv_F(normcdf(y));
 
+if plotit
+    xx=0:0.1:1000;
+    figure; 
+    subplot(3,2,[1 2]); hold on;
+    plot(xx,Nscore.T_F(xx))
+    plot(x,f,'d')
+    xlabel('x');ylabel('cdf(x)')
+    legend('Interpolation for the transform','ecdf from hard data')
+    
+    
+    subplot(3,2,3); hold on;
+    plot(xx,Nscore.T_F(xx))
+    plot(x,f,'d')
+    %set(gca,'Yscale','log')
+    xlim([0 x(3)])
+    xlabel('x');ylabel('cdf(x)')
+
+    subplot(3,2,4); hold on;
+    plot(xx,Nscore.T_F(xx))
+    plot(x,f,'d')
+    %set(gca,'Yscale','log')
+    xlim([x(end-2) 1000])
+    xlabel('x');ylabel('cdf(x)')
+    
+    subplot(3,2,[5 6]); hold on;
+    plot(Nscore.forward(xx'),xx)
+
+    
+    
+    
+    figure;
+    hold on;
+    plot(Nscore.forward(kernel.y),kernel.y)
+    xlabel('x');ylabel('cdf(x)');
+end
 
 % Kriging generate a mean and standard deviation in the std normal space.
 % We want to transform this std normal distribution in the original space.
@@ -41,19 +111,81 @@ Nscore.inverse = @(y) NscoreTinv_F(normcdf(y));
 % the nscore transform of the kernel.y cell and compute the probability
 % corresponding of the normal distribution generated by kriging (mu, sigma)
 
-Nscore.dist = @(mu,sigma) normpdf(Nscore.forward(kernel.y),mu,sigma)/sum(normpdf(Nscore.forward(kernel.y),mu,sigma));
-% ncty = NscoreT_fx([kernel.y(1)-kernel.dy/2 ; kernel.y+kernel.dy/2]);
+% Nscore.dist = @(mu,sigma) normpdf(Nscore.forward(kernel.y),mu,sigma)/sum(normpdf(Nscore.forward(kernel.y),mu,sigma));
+% ncty = Nscore.T_Fx([kernel.y(1)-kernel.dy/2 ; kernel.y+kernel.dy/2]);
 % Dist_NsTinv_fx = @(mu,sigma) max(normcdf(ncty(2:end),mu,sigma)-normcdf(ncty(1:end-1),mu,sigma),0);
+
+
+if plotit
+
+    figure;
+    x=6.2;
+    h1=subplot(1,2,1);hold on
+    ecdf(X);xlabel('x-original');ylabel('CDF(x)'); xlim([kernel.y(1) kernel.y(end)])
+    plot(x,Nscore.T_F(x),'.r', 'MarkerSize',40)
+    line([x x],[0 Nscore.T_F(x)],'Color','k')
+    line([x kernel.y(end)],[Nscore.T_F(x) Nscore.T_F(x)],'Color','k')
+    ax = gca; ax.XTick = sort([ax.XTick ,x]); h1.Position(3)=h1.Position(3)+0.03;
+    
+    h2=subplot(1,2,2);hold on
+    plot(-5:0.1:5,normcdf(-5:0.1:5))
+    plot(Nscore.forward(x), Nscore.T_F(x),'.r', 'MarkerSize',40)
+    line([-5 Nscore.forward(x)],[Nscore.T_F(x) Nscore.T_F(x)],'Color','k')
+    line([Nscore.forward(x) Nscore.forward(x)],[0 Nscore.T_F(x)],'Color','k')
+    xlabel('x-Normal Score Transform');ylabel('Standard Normal CDF(x)'); xlim([-5 5])
+    ax = gca; ax.XTick = sort([ax.XTick ,Nscore.forward(x)]);ax.YAxisLocation='right';
+    h2.Position(1)=h2.Position(1)-0.03;
+
+    
+    %%
+    mu= Y.pt.m;%0.4210;
+    sigma=Y.pt.s;%1.0044;
+    idx=1:20:kernel.n;
+    
+    figure;
+    
+    subplot(2,2,1);hold on
+    ecdf(X);xlabel('x');ylabel('cdf(x)'); xlim([kernel.y(1) kernel.y(end)])
+    plot(kernel.y(idx),Nscore.T_F(kernel.y(idx)),'.r', 'MarkerSize',20)
+    for i=idx
+        line([kernel.y(i) kernel.y(i)],[0 Nscore.T_F(kernel.y(i))],'Color',[0.4,0.4,0.4])
+        line([kernel.y(i) kernel.y(end)],[Nscore.T_F(kernel.y(i)) Nscore.T_F(kernel.y(i))],'Color',[0.4,0.4,0.4])
+    end
+    
+    subplot(2,2,2);hold on
+    plot(-5:0.1:5,normcdf(-5:0.1:5))
+    xlabel('x');ylabel('Std Normal cdf(x)'); xlim([-5 5])
+    for i=idx
+        line([-5 norminv(Nscore.T_F(kernel.y(i)))],[Nscore.T_F(kernel.y(i)) Nscore.T_F(kernel.y(i))],'Color',[0.4,0.4,0.4])
+        line([norminv(Nscore.T_F(kernel.y(i))) norminv(Nscore.T_F(kernel.y(i)))],[0 Nscore.T_F(kernel.y(i))],'Color',[0.4,0.4,0.4])
+    end
+    plot(norminv(Nscore.T_F(kernel.y(idx))),Nscore.T_F(kernel.y(idx)),'.r', 'MarkerSize',20)
+    subplot(2,2,3);hold on
+    hist(X);xlabel('x');ylabel('pdf(x)'); xlim([kernel.y(1) kernel.y(end)])
+    ax = gca;ax.YAxisLocation='right';
+    
+    subplot(2,2,4); hold on;
+    plot(-5:0.1:5,normpdf(-5:0.1:5,mu,sigma));
+    plot(Nscore.forward(kernel.y(idx)),normpdf(Nscore.forward(kernel.y(idx)),mu,sigma),'.r', 'MarkerSize',20)
+    for i=idx
+        line([Nscore.forward(kernel.y(i)) Nscore.forward(kernel.y(i))],[0 normpdf(Nscore.forward(kernel.y(i)),mu,sigma)],'Color','k')
+    end
+    
+    for i=1:length(idx)-1
+        u=linspace(Nscore.forward(kernel.y(idx(i))),Nscore.forward(kernel.y(idx(i+1))),20);
+        area([u  Nscore.forward(kernel.y(idx(i+1))) Nscore.forward(kernel.y(idx(i))) ],...
+            [normpdf(u,mu,sigma)  0 0])
+    end
+    set(gca,'Ydir','reverse'); xlim([-5 5])
+    
+    
+    
+    %% 
+
+end
+
+
 return
-
-% exemple
-mu= 0.4210
-sigma=1.0044
-hold on
-plot(kernel.y,Dist_NsTinv_fx(mu,sigma))
-plot(kernel.y,normpdf(NscoreT_fx(kernel.y),mu,sigma))
-plot()
-
 %% NOTE:
 % Here are 6 Method to compute the transform and back transform
 % A:  input vector
