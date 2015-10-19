@@ -1,7 +1,4 @@
 %% BSGS_S is computing simulation of BSGS at one specified scale.
-% It's a sequential stochatic simulation of a primary variable from
-% combination of sparce primary (X) data and more dence secondary data (Z).
-% The grid is define by the size of the secondary variable (Z).
 %
 % INPUT:
 %
@@ -28,8 +25,7 @@ function [Y_m, Y_m_ns] = BSGS_s(X, Z, Y, kernel, Nscore, k, grid, parm)
 
 %%
 % * *RESULT ALLOCATION*
-% Create empty matrix for resultats in normal space. Then populate it with
-% known value
+% Create the normal space result matrix and populate with known value 
 Y.m_ns = repmat({nan(size(Y.m{1}))},parm.n_realisation,1); 
 
 I=~isnan(Y.m{1});
@@ -37,6 +33,7 @@ for i_realisation=1:parm.n_realisation
     Y.m_ns{i_realisation}(I) = Nscore.forward(Y.m{i_realisation}(I));
 end
 
+% Create the normal space primary variable of known data
 X.d_ns = Nscore.forward(X.d);
 
 
@@ -106,7 +103,7 @@ for i_pt=1:Y.sim.n; % loop over each point
         end
         
         % variance of the kriging
-        Y.pt.s = k0.s;
+        Y.pt.s = 3*k0.s;
         
         
         %%

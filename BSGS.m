@@ -1,8 +1,7 @@
-%% BSS is computing the Bayesian Sequential Gaussian Simulation.
-% It's a sequential stochatic simulation of a primary variable from
-% combination of sparce primary (X) data and more dence secondary data (Z).
-% The grid is define by the size of the secondary variable (Z). The primary
-% variable can be at any point of this grid (X.x,X.y)
+%% BSGS is computing the Bayesian Sequential Gaussian Simulation.
+% BSGS is a sequential stochatic simulation of a primary variable from
+% combination of a primary variable (X) and a secondary data (Z). 
+% The primary variable can be at any point of this grid (X.x,X.y)
 %
 % INPUT:
 %
@@ -11,23 +10,26 @@
 % * Z.d     : Secondary variable (2D- grid.nx x grid.n elts)
 % * Z.x,y   : x,y-coordinate of the secondary variable (1D elts)
 % * Z.std   : Secondary variable std error (2D-grid.nx x grid.n elts)
+% * grid    : grid informations
+% * parm    : Parameters of the simulation
 %
 % OUTPUT:
 %
-% * Y       : Simulated Primary variable in matrix
+% * Y       : Simulated Primary variable
 % * t       : Time of simulations
 % * kernel  : kernel information
-% * k     
+% * k       : kriging information
 %
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
 % * *Date:* 02.02.2015
 
 function [Y, t, kernel, k] = BSGS(X,Z,X_true,grid,parm)
 t.tic.global = tic;
+
+%% 
+% * *INPUT CHECKOUT*
 % force input in column
 X.x=X.x(:);X.y=X.y(:);Z.x=Z.x(:);Z.y=Z.y(:);
-
-%% Input checkout
 % Check the input for correct size dans dimension
 assert(ismatrix(Z.d),'Z is not 2Y.mat_simD');
 assert(all([numel(Z.y), numel(Z.x)]==size(Z.d)),'Z.x,y does not seems to be ok');
@@ -40,34 +42,30 @@ assert(all(size(X.d)==size(X.x)),'X.d and X.x (or X.y) don''t have the same dime
 
 %%
 % * *VARIOGRAM INPUT*
-
 if parm.fitvar
-    [k.range, fig.varfit] = fit_variogramm(X,Z,parm.plot.fitvar);
-    disp(['The fitted range is: ', num2str(k.range)])
-    keyboard
+    k.range = fit_variogramm(X,Z,parm.plot.fitvar);
 else % default variogramm 
     k.range = [100 10];
 end
 k.rotation = 0;
 k.model = [4 k.range k.rotation; 1 1 1 1];
 k.wradius = 1.3;
-k.var   = [.99; 0.01];
-k.nb_neigh  = [5 5 5 5; 30 30 30 30]; % min and max number of point
+k.var   = [.85; 0.15];
+k.nb_neigh  = [2 2 2 2; 6 6 6 6]; % min and max number of point
 
 %%
 % * *SEARCHING WINDOWS:* 
 % creationg of the Super Block Grid 
 if parm.neigh
-    nx = 20; % number of superblock grid
-    ny = 20;
-    nb_max = 40; % max number of point to take in the mask (random sampling)
-    [k, X] = SuperBlockGridCreation(k, nx, ny, grid{end}.x(end), grid{end}.y(end), X, nb_max, parm.plot.sb);
-    clear nx ny nb_max plotit2
+    k.sb.n = grid{end}.nx/20; % number of superblock grid
+    k.sb.ny = grid{end}.ny/20;
+    [k, X] = SuperBlockGridCreation(k, grid{end}.x(end), grid{end}.y(end), X, parm.plot.sb);
 end
 
 %% Non-parametric Relationship
 % Link primary and secondary data.
 kernel = kernel_est(X, Z, parm.plot.kernel);
+
 
 %%
 % * *NSCORE*
@@ -76,16 +74,16 @@ kernel.y_ns = Nscore.forward(kernel.y); % convert the kernel grid in normal spac
 [~,kernel.y_ns_unique,~] = unique(kernel.y_ns); % find the unique value as during transformation some become very similar
 
 %%
-% * *Scale to simulate*
-assert(max(parm.scale)<=numel(grid))
-Y=cell(numel(parm.scale),1);
-X.x_ini = X.x; X.y_ini = X.y; X.d_ini = X.d;
-
+% * *INITIATE*
+assert(max(parm.scale)<=numel(grid)) % assert that simulation scale exist
+Y=cell(numel(parm.scale),1); % allocate variable space
+X.x_ini = X.x; X.y_ini = X.y; X.d_ini = X.d; %keep initial data intact
 if parm.neigh; k.sb.mask_ini = k.sb.mask; end
 
 for scale_i=1:numel(parm.scale) % for each scale
     t.tic.scale = tic;
-    s = parm.scale(scale_i);
+    s = parm.scale(scale_i); % find scale level
+    
     % Allocating space for resulting field. The third dimension is for at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
     Y{scale_i}.x=grid{s}.x; 
     Y{scale_i}.y=grid{s}.y; 
@@ -126,6 +124,7 @@ for scale_i=1:numel(parm.scale) % for each scale
     t.scale{scale_i} = toc(t.tic.scale);
 end
 
+% save intial value
 X.x = X.x_ini; X.y = X.y_ini; X.d = X.d_ini; X.n=numel(X.d);
 if parm.neigh; k.sb.mask = k.sb.mask_ini; end
 clear X.d_ini X.y_ini X.x_ini k.sb.mask_ini
@@ -134,7 +133,8 @@ t.global = toc(t.tic.global);
 clear t.tic
 
 
-%% Save it
+%% 
+% * *SAVE IT*
 if parm.saveit
     save(['result/', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM'), '.mat'], 'parm', 'Y', 'grid', 't', 'X', 'Z', 'X_true', 'k', 'kernel', 'Nscore')
 end

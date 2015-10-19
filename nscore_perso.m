@@ -62,7 +62,6 @@ end
 
 Nscore.T_F = griddedInterpolant(x2,f2,method,extrapolationMethod);
 
-
 Nscore.Tinv_F = griddedInterpolant(f2,x2,method,extrapolationMethod);
 
 % Function of Normal Score Transform

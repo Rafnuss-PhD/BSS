@@ -202,6 +202,10 @@ switch gen.Rho.method
         rmpath data_gen/R2
 end
 
+Sigma.x_raw = grid_Rho.x;
+Sigma.y_raw = grid_Rho.y;
+Sigma.d_raw = 1000./Rho.d_raw;
+
 Sigma.x = grid.x;
 Sigma.y = grid.y;
 Sigma.xy = grid.xy;

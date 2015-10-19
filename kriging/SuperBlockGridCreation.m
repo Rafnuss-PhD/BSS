@@ -1,4 +1,4 @@
-function [k, X]=SuperBlockGridCreation(k, nx, ny, xmax, ymax, X, nb_max, plotit)
+function [k, X]=SuperBlockGridCreation(k, xmax, ymax, X, plotit)
 %% SuperBlockGridCreation return the super block grid (k.sb)
 %
 % INPUT:
@@ -17,8 +17,6 @@ function [k, X]=SuperBlockGridCreation(k, nx, ny, xmax, ymax, X, nb_max, plotit)
 % * *Date:* 02.02.2015
 
 k.qs=[1 1; -1 1; -1 -1; 1 -1]; % used later on for orientation of the quarter windows (4 quandrant)
-k.sb.nx=nx;
-k.sb.ny=ny;
 k.sb.x=linspace(0,xmax,k.sb.nx+1);
 k.sb.dx=k.sb.x(2)-k.sb.x(1);
 k.sb.x=k.sb.x(1:end-1)+k.sb.dx/2; % x will start not at 0 but at dx/2
