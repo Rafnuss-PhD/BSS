@@ -1,5 +1,5 @@
 
-%% R2
+%% R2  
 % Electrode configuration
 figure;
 plot(gen.Rho.elec.data,1:gen.Rho.elec.confirho_n,'x')
@@ -79,8 +79,7 @@ plot(Rho_sen_well,rho_err,'x');
 xlabel('Normalized sensitivity');ylabel('Error between well measurement and inverted image')
 
 
-
-%% Generated Data
+%% Generated Data  
 
 figure;
 caxis_lim = [min([Sigma.d(:); sigma_true(:)]) max([Sigma.d(:); sigma_true(:)]) ];
@@ -141,18 +140,7 @@ subplot(2,2,4);
 title(sprintf('Inversed resisitivity Rho_{true} | \\mu=%.2f, \\sigma=%.2f',mean(Sigma.d(:)), std(Sigma.d(:))))
 
 
-
-
-
-
-
-
-
-
-
-
-%%
-%--------------------------OUPTUT-------------------------------------------
+%%  OUPTUT  
 
 % 
 % %% Kriging
@@ -204,7 +192,7 @@ shading flat;colorbar; caxis(caxis_limm); axis tight;set(gca,'Ydir','reverse'); 
 title([ 'True 1/',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and sampled g: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
 for i_sim=2:mm*kk
     subplot(kk,mm,i_sim); 
-    pcolor(grid{end}.x,grid{end}.y,Y{end}.m{i_sim-1});
+    pcolor(grid{parm.scale(end)}.x,grid{parm.scale(end)}.y,Y{end}.m{i_sim-1});
     shading flat;colorbar;caxis(caxis_limm);axis tight;set(gca,'Ydir','reverse'); xlabel('x[m]');ylabel('y[m]');
     title(['Simmulated 1/', parm.unit, ' gG: \mu=' num2str(mean2(Y{end}.m{i_sim-1})) ' | \sigma=' num2str(std2(Y{end}.m{i_sim-1})) ]);
 end
@@ -212,12 +200,12 @@ end
 
 % Histogramm
 figure; 
-nbins=100;
+nbins=50;
 subplot(2,1,1);hold on; title('Result')
-[f,x]=hist(X_true(:),nbins); plot(x,f/trapz(x,f),'linewidth',2);
+[f,x]=hist(X_true(:)); plot(x,f/trapz(x,f),'linewidth',2);
 [f,x]=hist(X.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
 [f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
-for i_sim=1:mm*(kk-1)
+for i_sim=1:mm*kk-1
     [f,x]=hist(Y{end}.m{i_sim}(:),nbins); plot(x,f/trapz(x,f));
 end
 legend('True X', 'Sampled X', 'Z', 'realisation')
@@ -226,64 +214,56 @@ subplot(2,1,2);hold on;title('Normal Space')
 [f,x]=hist(Nscore.forward(X_true(:))); plot(x,f/trapz(x,f),'linewidth',2);
 [f,x]=hist(Nscore.forward(X.d(:))); plot(x,f/trapz(x,f),'linewidth',2);
 [f,x]=hist(Nscore.forward(Z.d(:))); plot(x,f/trapz(x,f),'linewidth',2);
-for i_sim=1:mm*(kk-1)
+for i_sim=1:mm*kk-1
     [f,x]=hist(Nscore.forward(Y{end}.m{i_sim}(:))); plot(x,f/trapz(x,f));
 end
 legend('True X', 'Sampled X', 'Z', 'realisation')
 
 
-%% Variogram
+%% Variogram  
 nrbins=30;
-myfun = @(x,h) .05+semivariogram1D(h,.95,x,'sph',0);
-val_m=nan(grid{end}.nx,nrbins);
-val_true=nan(grid{end}.nx,nrbins);
-val_true_rho=nan(grid{end}.nx,nrbins);
-for i=1:grid{end}.nx
-    temp=(sigma_true(:,i)-mean(sigma_true(:,i)))/std(sigma_true(:,i));
-    Emp = variogram(grid{end}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
-    val_true_rho(i,:)=Emp.val;
-    
+myfun = @(x,h) semivariogram1D(h,1,x,'sph',0);
+val_m=nan(grid{parm.scale(end)}.nx,nrbins);
+val_true=nan(grid{parm.scale(end)}.nx,nrbins);
+
+for i=1:grid{parm.scale(end)}.nx
     temp=(sigma_true(:,i)-mean(sigma_true(:,i)))/std(sigma_true(:,i));
     Emp = variogram(grid{end}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
     val_true(i,:)=Emp.val;
 
     temp=(Y{end}.m{end}(:,i)-mean(Y{end}.m{end}(:,i)))/std(Y{end}.m{end}(:,i));
-    Emp = variogram(grid{end}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
+    Emp = variogram(grid{parm.scale(end)}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
     val_m(i,:)=Emp.val;
 end
 figure; subplot(1,2,1);hold on
-plot(Emp.distance,mean(val_true_rho))
 plot(Emp.distance,mean(val_true))
 plot(Emp.distance,mean(val_m))
 plot(Emp.distance,myfun(5,Emp.distance))
-legend('true porosite','true model','simulated model','theorical equation')
+legend('true conductivity','simulated conductivity','theorical equation')
 ylabel('vertical')
 xlabel('m')
 
 nrbins=300;
-val_m=nan(grid{end}.ny,nrbins);
-val_true=nan(grid{end}.ny,nrbins);
-val_true_rho=nan(grid{end}.ny,nrbins);
-for i=1:grid{end}.ny
-    temp=(sigma_true(i,:)-mean(sigma_true(i,:)))/std(sigma_true(i,:));
-    Emp = variogram(grid{end}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
-    val_true_rho(i,:)=Emp.val;
-    
+val_m=nan(grid{parm.scale(end)}.ny,nrbins);
+val_true=nan(grid{parm.scale(end)}.ny,nrbins);
+
+for i=1:grid{parm.scale(end)}.ny
     temp=(sigma_true(i,:)-mean(sigma_true(i,:)))/std(sigma_true(i,:));
     Emp = variogram(grid{end}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
     val_true(i,:)=Emp.val;
-
+    
     temp=(Y{end}.m{end}(i,:)-mean(Y{end}.m{end}(i,:)))/std(Y{end}.m{end}(i,:));
-    Emp = variogram(grid{end}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
+    Emp = variogram(grid{parm.scale(end)}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
     val_m(i,:)=Emp.val;
 end
 
 subplot(1,2,2);hold on
-plot(Emp.distance,mean(val_true_rho))
-plot(Emp.distance,mean(val_true))
-plot(Emp.distance,mean(val_m))
+y=mean(val_true);
+plot(Emp.distance(~isnan(y)),y(~isnan(y)))
+y=mean(val_m);
+plot(Emp.distance(~isnan(y)),y(~isnan(y)))
 plot(Emp.distance,myfun(75,Emp.distance))
-legend('true porosite','true model','simulated model','theorical equation')
+legend('true conductivity','simulated conductivity','theorical equation')
 ylabel('horizontal')
 xlabel('m')
 

@@ -1,4 +1,4 @@
-function kernel = kernel_est(X,Z, plotit)
+function kernel = kernel_est(X, Z, range, plotit)
 % Nonparametric computes the non-parametric density for two vectors of data
 % point X and Z.
 % INPUT :
@@ -24,16 +24,16 @@ end
 n = 2^8;
 
 % Compute the range for the grid used in the density
-dX=range(X.d(:)); % ???
-dZ=range(Zstdx(:));% range(Z)/2; % ???
-min_ZX=[min(Zdx)-dZ, min(X.d)-dX/4]; 
-max_ZX=[max(Zdx)+dZ, max(X.d)+dX/4];
-% assert(min(Zdx)>range.min(1))
-% assert(min(X.d)>range.min(2))
-% assert(max(Zdx)<range.max(1))
-% assert(max(X.d)<range.max(2))
-% min_ZX = range.min;
-% max_ZX = range.max;
+% dX=range(X.d(:)); % ???
+% dZ=range(Zstdx(:));% range(Z)/2; % ???
+% min_ZX=[min(Zdx)-dZ, min(X.d)-dX/3]; 
+% max_ZX=[max(Zdx)+dZ, max(X.d)+dX/3];
+assert(min(Zdx)>range.min(1))
+assert(min(X.d)>range.min(2))
+assert(max(Zdx)<range.max(1))
+assert(max(X.d)<range.max(2))
+min_ZX = range.min;
+max_ZX = range.max;
 
 % Bandwidth proposed by Foster and Bowman
 l_z=std(Zdx)* length(Zdx)^(-1/6);

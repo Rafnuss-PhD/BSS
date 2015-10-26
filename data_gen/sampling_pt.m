@@ -1,4 +1,4 @@
-function pt = sampling_pt(grid,field,method)
+function pt = sampling_pt(grid,field,method,k)
 % SAMPLING_PT simulate the measurement of high resolution point of the a
 % field. Two method are implemented (borehole or random)
 % INPUT:
@@ -22,7 +22,7 @@ end
 
 switch method
     case 1 % select all point in k boreholes equaly spaced
-        k=3; % number of borehole;
+        
         %  positions of conditioning data
         
         bor_pos_x = ceil(grid.nx/k/2:grid.nx/k:grid.nx);

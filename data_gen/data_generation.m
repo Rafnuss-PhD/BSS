@@ -25,7 +25,7 @@ function [grid, K_true, phi_true, sigma_true, K, sigma, Sigma, gen] = data_gener
 % date : January 2014
 % need to do : add assert() for input, flexible number of input var
 
-
+tic
 %% grid{end}
 gen.scale.n = numel(gen.scale.x); % number of scale, ie nb of scale
 grid = cell(gen.scale.n,1);
@@ -50,7 +50,7 @@ end
 
 %% 
 % handle function for generating a fiel and all phsical relationship
-f_new_field 	= @(grid,covar) fftma(grid.x(1),grid.dx,grid.x(end),grid.y(1),grid.dy,grid.y(end),covar);
+
 f_Heinz         = @(phi) 10.^(6.66 *phi - 4.97); % log_10(K) = 6.66 \phi - 4.97 + noise (Heinz et al., 2003)
 f_Heinz_inv     = @(K) (log10(K)+4.97)/ 6.66 ; % log_10(K) = 6.66 \phi - 4.97  + noise (Heinz et al., 2003)
 f_Archie        = @(phi)43*real(phi.^1.4);  % \sigma = \sigma_W \phi ^m  + noise (Archie, 1942) where sigma_W can go up to .075, 1.2<m<1.6 
@@ -98,19 +98,30 @@ switch gen.method
         K = sampling_pt(grid{end},K_true,gen.samp); % 3. Simulate high-resolution point measurement of K
         g = sampling_pt(grid{end},rho_true,gen.samp); % 4. Simulate high-resolution point measurement of g
         [G, gen.G] = meas_G_grid(grid{end},rho_true,gen.G,gen.plotit); % 5. Simulate low-resolution grid{end} measurement of G
+        
+    case 'Random'
+        sigma_true=fftma_perso(gen.covar, grid{end});
+        
+        sigma           = sampling_pt(grid{end},sigma_true,gen.samp,gen.samp_n);
+        phi_true        = NaN;
+        K_true          = NaN;
+        K               = NaN;
+        Sigma.d         = sigma_true;
+        Sigma.x         = grid{end}.x;
+        Sigma.y         = grid{end}.y;
+        Sigma.std       = 1+zeros(size(Sigma.d));
 
+        
     case 'fromRho' % from phi
-        field_raw   = f_new_field(grid{end},gen.covar);
-        field       = ( field_raw-mean(field_raw(:)) )/ std(field_raw(:));
-        phi_true    = gen.mu + gen.std*field;
+        phi_true    = gen.mu + gen.std*fftma_perso(gen.covar, grid{end});
         
         assert(all(phi_true(:)>0),'All phi_true are not greater than 0')
         K_true      = f_Heinz(phi_true);
         sigma_true  = f_Archie(phi_true); % archie gives conductivity, I want resisitivitiy
         rho_true    = 1000./sigma_true;
                 
-        K           = sampling_pt(grid{end},K_true,gen.samp); % 3. Simulate high-resolution point measurement of K
-        sigma       = sampling_pt(grid{end},sigma_true,gen.samp); % 4. Simulate high-resolution point measurement of g
+        K           = sampling_pt(grid{end},K_true,gen.samp,gen.samp_n); % 3. Simulate high-resolution point measurement of K
+        sigma       = sampling_pt(grid{end},sigma_true,gen.samp,gen.samp_n); % 4. Simulate high-resolution point measurement of g
         rho         = sigma;
         rho.d       = 1000./sigma.d;
         % figure;imagesc(1./rho_true);axis equal;colorbar;

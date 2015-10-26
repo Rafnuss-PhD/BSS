@@ -34,11 +34,11 @@ gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
 % grid size is $(2^gen.scale.x(i)-1) \times (2^gen.scale.y(i)-1)$ 
-gen.scale.x = [1:9];
+gen.scale.x = [1:8];
 gen.scale.y = [1:6 6 6 6];
 
 % Generation Method.
-gen.method              = 'fromRho';   
+gen.method              = 'Random';% 'fromRho';   
 % 'Paolo':              load paolo initial model and fit it to the created grid
 % 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
 % 'fromRho':            idem
@@ -63,7 +63,7 @@ gen.Rho.dmin.tolerance    = 1;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'test_1';
+gen.name                = 'random';
 gen.seed                = 123456;
 
 % Run the function
@@ -72,15 +72,20 @@ data_generation(gen);
 
 
 
-%% FIRST STEP
+%% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
-parm.n_realisation  = 1;
+
+parm.n_realisation  = 3;
 parm.scale          = 1:numel(grid);
-parm.seed           = rand();
-parm.neigh          = false;
-parm.cstk           = true;
+
 parm.fitvar         = 0;
+parm.covar          = gen.covar;
+
+parm.seed           = rand();
+parm.neigh          = true;
+parm.cstk           = true;
+parm.nscore         = true;
 parm.unit           = 'Electrical Conductivitiy';
 
 % Saving
@@ -96,26 +101,24 @@ parm.plot.kernel    = 0;
 parm.plot.fitvar    = 0;
 parm.plot.krig      = 0;
 
-% parm.k.range.min = [50 50];
-% parm.k.range.max = [500 500];
+parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
+parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
 
 tic; [sSigma, t] = BSGS(sigma,Sigma,sigma_true,grid,parm); t.gG_glo=toc;
 
 
 
-%% SECOND STEP
-% Generation of the high resolution hydraulic conductivity (gG) from scarce
-% point data (K) and electrical conductivity field. We used the log of k.
-% plotit=0;
-% n_realisation=1;
-% K_log=K;
-% K_log.d = log10(K.d); % convert in log10
-% tic; [kK_log,t.kK] = BSGS(K_log,GG,K_true,grid,plotit,n_realisation);t.KKg=toc;
-% kK=kK_log; % back-convert
-% for i=1:size(kK_log,1)
-%     for u=1:size(kK_log{i}.m,1)
-%         kK{i}.m{u}=10.^kK_log{i}.m{u};
-%     end
-% end
-% 
-% clear kK_log K_log
+%% Compare field
+fieldname = {'random_2015-10-26_14-08', 'random_2015-10-26_14-43'};
+figure; hold on; axis equal
+for i= 1:numel(fieldname)
+    load(fieldname{i})
+    data=[];
+    for i_realisation =1:parm.n_realisation
+        data= [data, Y{end}.m{i_realisation}(:)];
+    end
+    D = pdist(data');
+    D_y = cmdscale(D);
+    scatter(D_y(:,1),D_y(:,2))
+end
+legend('variable path','constant path')
