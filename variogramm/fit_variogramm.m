@@ -1,4 +1,4 @@
-function range=fit_variogramm(X,Z,plotit)
+function range=fit_variogramm(X,Z,plotit,X_true)
 
 % LSCurve global fit
 myfun = @(x,h) semivariogram1D(h,x(1),x(2),'sph', x(3)); % x= [ c0(1) range c0(2) (nugguet effect)] 
@@ -16,7 +16,7 @@ assert(all(~isnan(Emp.val)),'problem');
 range0 = 10;
 c0 = [.95 .05];
 x0 = [c0(1) range0 c0(2)];
-x = lsqcurvefit(myfun,x0,Emp.distance,Emp.val,[0 0 0],[. 5 .05],options);
+x = lsqcurvefit(myfun,x0,Emp.distance,Emp.val,[0 0 0],[1 5 .05],options);
 
 y_range=x(2);
 c=[x(1); x(3)];
