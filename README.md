@@ -1,5 +1,5 @@
 # Bayasian Sequential Gaussian Simulator (BSGS) #
-This code simulate a two-step approach based on a geostatistical conditional simulation technique known as Bayesian sequential simulation. 
+This MATLAB code uses Bayesian Gaussian Sequential Simulation to create conditional realisation. 
 
 ## History and Developpement ##
 * The Bayasian Sequential Gaussian Simulation technique was introduced by  Doyen & Boer in 1996 to extrapolate non linear data of lithology. 
@@ -7,7 +7,7 @@ This code simulate a two-step approach based on a geostatistical conditional sim
 
 ![CharFlow_BSGS_resized.png](https://bitbucket.org/repo/gABK6j/images/26574965-CharFlow_BSGS_resized.png) ![BSGS_Simulation_2.png](https://bitbucket.org/repo/gABK6j/images/3694505833-BSGS_Simulation_2.png)
 
-## A little bit of explanation ##
+## Theorie of BSGS ##
 The overall objectif of BSGS is to generate a realisations of a primary variable using two dataset : (1) a sparce high resolution primary and secondary variable at identical location and  (2) low-resolution secondary variable covering the entire region.
 
 The method estimate all unsampled location as follow :
@@ -19,7 +19,10 @@ The method estimate all unsampled location as follow :
 ![BSGS_Simulation.png](https://bitbucket.org/repo/gABK6j/images/3538075189-BSGS_Simulation.png)
 
 
-## How to get set up ? ##
+## How to use it ? ##
+
+Several feathure can be turn on/off such as :  variogramm fitting to conditional data, smart neighbooring search for krigeage, constant path and weight for kriging, n-score transform. This feathure are made to make the code running faster.
+
 
 ## What's New 
 ### 1.0 : 
