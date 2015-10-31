@@ -174,27 +174,32 @@ switch gen.Rho.method
         Rho.d_raw           = flipud(gen.Rho.i.output.res);
         f                   = griddedInterpolant({grid_Rho.y,grid_Rho.x},Rho.d_raw,'nearest','nearest');
         Rho.d               = f({grid.y,grid.x});
+        Sigma.d             = 1000./Rho.d;
         
         if dmin.res_matrix ==  1
-            Rho.sen_raw       = flipud(gen.Rho.i.output.sen);
-            f               = griddedInterpolant({grid_Rho.y,grid_Rho.x},Rho.sen_raw,'nearest','nearest');
-            Rho_sen           = f({grid.y,grid.x});
-            Rho_sen_log       = -log10(Rho_sen);
-            Rho.sen           = (Rho_sen_log-min(Rho_sen_log(:)))/(max(Rho_sen_log(:)-min(Rho_sen_log(:))));
-            Rho_d_well        = Rho.d(ismember(rho.y,grid.Y)&ismember(rho.x,grid.X));
-            g_err           = Rho_d_well-rho.d;
-            Rho.std           = .5+std(rho.d)*Rho.sen;% + std(rho.d)/100 ;
-        elseif dmin.res_matrix ==  2
-            Rho.sen_raw       = flipud(gen.Rho.i.output.res);
-            f               = griddedInterpolant({grid_Rho.y,grid_Rho.x},Rho.sen_raw,'nearest','nearest');
-            Rho_sen           = f({grid.y,grid.x});
-            Rho_sen_log       = -log10(Rho_sen);
+            Rho.sen_raw         = flipud(gen.Rho.i.output.sen);
+            Sigma.sen_raw       = 1000./Rho.sen_raw;
+            f                   = griddedInterpolant({grid_Rho.y,grid_Rho.x},Sigma.sen_raw,'nearest','nearest');
+            Sigma_sen           = f({grid.y,grid.x});
+            Sigma_sen_log       = log10(Sigma_sen);
             % normalized sensitivity. then because we have the side effect
-            Rho.sen           = 1.4*(Rho_sen_log-min(Rho_sen_log(:)))/(max(Rho_sen_log(:)-min(Rho_sen_log(:))));
-            Rho_d_well        = Rho.d(ismember(rho.y,grid.Y)&ismember(rho.x,grid.X));
+            Sigma_sen_norm      = 1.4*(Sigma_sen_log-min(Sigma_sen_log(:)))/(max(Sigma_sen_log(:)-min(Sigma_sen_log(:))));
+            %Rho_d_well        = Rho.d(ismember(rho.y,grid.Y)&ismember(rho.x,grid.X));
             % g_err           = Rho_d_well-rho.d;
             % Rho.std           = .1*std(rho.d)+std(rho.d)*Rho.sen;% + std(rho.d)/100 ;
-            Rho.std           = (1+39)/100*Rho.sen.*Rho.d;
+            Sigma.std           = (.1+.39*(Sigma_sen_norm) ).*Sigma.d;
+        elseif dmin.res_matrix ==  2
+            Rho.sen_raw       = flipud(gen.Rho.i.output.res);
+            Sigma.sen_raw       = 1000./Sigma.sen_raw;
+            f               = griddedInterpolant({grid_Rho.y,grid_Rho.x},Sigma.sen_raw,'nearest','nearest');
+            Sigma_sen           = f({grid.y,grid.x});
+            Sigma_sen_log       = -log10(Sigma_sen);
+            % normalized sensitivity. then because we have the side effect
+            Sigma_sen_norm           = 1.4*(Sigma_sen_log-min(Sigma_sen_log(:)))/(max(Sigma_sen_log(:)-min(Sigma_sen_log(:))));
+            %Rho_d_well        = Rho.d(ismember(rho.y,grid.Y)&ismember(rho.x,grid.X));
+            % g_err           = Rho_d_well-rho.d;
+            % Rho.std           = .1*std(rho.d)+std(rho.d)*Rho.sen;% + std(rho.d)/100 ;
+            Sigma.std           = (1+39)/100*Sigma_sen_norm.*Sigma.d;
         else
             Rho.std           = std(rho.d)*ones(size(Rho.d));
         end
@@ -204,13 +209,15 @@ end
 
 Sigma.x_raw = grid_Rho.x;
 Sigma.y_raw = grid_Rho.y;
-Sigma.d_raw = 1000./Rho.d_raw;
+
+% grid_Rho.x = Sigma.x_raw;
+% grid_Rho.y = Sigma.y_raw;
+% grid=grid{end};
 
 Sigma.x = grid.x;
 Sigma.y = grid.y;
 Sigma.xy = grid.xy;
-Sigma.d = 1000./Rho.d;
-Sigma.sen = Rho.sen;
-Sigma.std = (.01 +.39*Sigma.sen).*Sigma.d;
+
+
 
 end

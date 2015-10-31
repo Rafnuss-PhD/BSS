@@ -29,24 +29,24 @@ clc; % clear all;
 % store the parameter and |data_generation.m| compute everything
 
 % Grid size
-gen.xmax = 300; %total length in unit [m]
+gen.xmax = 240; %total length in unit [m]
 gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
 % grid size is $(2^gen.scale.x(i)-1) \times (2^gen.scale.y(i)-1)$ 
-gen.scale.x = [1:8];
-gen.scale.y = [1:6 6 6 6];
+gen.scale.x = [1:10];
+gen.scale.y = [1:6 6 6 6 6];
 
 % Generation Method.
-gen.method              = 'Random';% 'fromRho';   
+gen.method              = 'fromRho';% 'fromRho';   
 % 'Paolo':              load paolo initial model and fit it to the created grid
 % 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
 % 'fromRho':            idem
 
 % Generation parameter
 gen.samp                = 1;                     % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
-gen.samp_n              = gen.xmax/100;          % number of well or number of point
-gen.covar.modele        = [4 100 10 0; 1 1 1 0]; % covariance structure
+gen.samp_n              = 3;          % number of well or number of point
+gen.covar.modele        = [4 160 15 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
 gen.mu                  = .27; % parameter of the first field. 
 gen.std                 = .06;
@@ -63,7 +63,7 @@ gen.Rho.dmin.tolerance    = 1;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'random';
+gen.name                = 'Very_large_1millionscells';
 gen.seed                = 123456;
 
 % Run the function
@@ -76,8 +76,8 @@ data_generation(gen);
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
 
-parm.n_realisation  = 3;
-parm.scale          = 1:numel(grid);
+parm.n_realisation  = 2;
+parm.scale          = numel(grid);
 
 parm.fitvar         = 0;
 parm.covar          = gen.covar;
@@ -104,7 +104,11 @@ parm.plot.krig      = 0;
 parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
 parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
 
-tic; [sSigma, t] = BSGS(sigma,Sigma,sigma_true,grid,parm); t.gG_glo=toc;
+[sSigma, t] = BSGS(sigma,Sigma,sigma_true,grid,parm);
+
+
+
+
 
 
 

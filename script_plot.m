@@ -291,11 +291,11 @@ end
 
 figure; hold on
 imagesc(k.sb.x,k.sb.y,windows) % windows (yellow)
-mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.nx+1,k.sb.ny+1),'EdgeColor','k','facecolor','none') % mesh
+mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.ny+1, k.sb.nx+1),'EdgeColor','k','facecolor','none') % mesh
 plot(X.x, X.y,'d')
 plot(k.sb.x(j), k.sb.y(i),'or')
-plot(X.x(k.sb.mask(i,j,:)), X.y(k.sb.mask(i,j,:)),'x')
-plot([X.x'; k.sb.x(X.sb_x)],[X.y'; k.sb.y(X.sb_y)])
+plot(X.x(k.sb.mask{i,j}), X.y(k.sb.mask{i,j}),'x')
+% plot([X.x'; k.sb.x(X.sb_x)],[X.y'; k.sb.y(X.sb_y)])
 axis tight;
 xlabel('x [m]');ylabel('y [m]')
 legend('Super Grid','Hard data',['Center of grid ' num2str(i) ';' num2str(j)],['Hard data selected with grid ' num2str(i) ';' num2str(j)])

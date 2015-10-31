@@ -26,29 +26,29 @@ function k=covardm(x,x0,model,c)
 
 % here we define the equations for the various covariograms. Any new model
 % can be added here.
-k=[];
-Gam=['h==0                                                           '; %nugget
-     'exp(-h)                                                        '; %exponential
-     'exp(-(h).^2)                                                   '; %gaussian
-     '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)                          '; %spherical
-     '1-h                                                            '; %linear
-     '7*min(h,1).^2-8.75*min(h,1).^3+3.5*min(h,1).^5-0.75*min(h,1).^7'; %modele cubique
-     '(h.^2).*log(max(h,eps))                                        '; %spline plaque mince
-     '(h.^2+1).^(-0.5)                                               '; %modèle gravimétrique (Cauchy avec b=0.5)
-     '(h.^2+1).^(-1.5)                                               '; %modele magnétique (Cauchy avec b=1.5) 
-     'sin(max(eps,h*2*pi))./max(eps,h*2*pi)                          '; %effet de trou sinusoidal
-     'cos(h*2*pi)                                                    '; %effet de trou cosinusoidal
-     '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)+1-h                      '];%spherique+lineaire
+%k=[];
+% Gam=['h==0                                                           '; %nugget
+%      'exp(-h)                                                        '; %exponential
+%      'exp(-(h).^2)                                                   '; %gaussian
+%      '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)                          '; %spherical
+%      '1-h                                                            '; %linear
+%      '7*min(h,1).^2-8.75*min(h,1).^3+3.5*min(h,1).^5-0.75*min(h,1).^7'; %modele cubique
+%      '(h.^2).*log(max(h,eps))                                        '; %spline plaque mince
+%      '(h.^2+1).^(-0.5)                                               '; %modèle gravimétrique (Cauchy avec b=0.5)
+%      '(h.^2+1).^(-1.5)                                               '; %modele magnétique (Cauchy avec b=1.5) 
+%      'sin(max(eps,h*2*pi))./max(eps,h*2*pi)                          '; %effet de trou sinusoidal
+%      'cos(h*2*pi)                                                    '; %effet de trou cosinusoidal
+%      '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)+1-h                      '];%spherique+lineaire
 
 
 % definition of some constants
 
 
-[n1,d]=size(x); % d dimension de l'espace
+[n1,~]=size(x); % d dimension de l'espace
 [n2,d]=size(x0);
 [rp,p]=size(c);
 r=rp/p;  % nombre de structures
-cx=[x(:,1:d);x0];
+% cx=[x(:,1:d);x0];
 nm=size(model,2);
 
 % ne pas permettre des portées de 0 en input 
@@ -75,6 +75,12 @@ for i=1:r,
   ji=(i-1)*p+1; js=i*p ;
 
   % evaluation of the current basic structure
-  g=eval(Gam(model(i,1),:));
+  if model(i,1)==4
+    g=1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3) ; % eval(Gam(model(i,1),:));
+  elseif model(i,1)==1
+      g=h==0;
+  else
+      error('custumized for time saving, only work for nugget and sphe')
+  end
   k=k+kron(g,c(ji:js,:));
 end

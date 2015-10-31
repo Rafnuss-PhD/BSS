@@ -39,27 +39,81 @@ assert(size(X.y,2)==1,'X.y is not a vertical vector 1D');
 assert(all(size(X.y)==size(X.x)),'X.x and X.y don''t have the same dimension');
 assert(all(size(X.d)==size(X.x)),'X.d and X.x (or X.y) don''t have the same dimension');
 
+%%
+% * *DEFAULT VALUE*
+if ~isfield(parm, 'seed'),   parm.seed       =rand(); end
+if ~isfield(parm, 'covar'),  parm.covar      =parm.gen.covar; end
+if ~isfield(parm, 'saveit'), parm.saveit     =1; end
+if ~isfield(parm, 'name'),   parm.name       =''; end
+if ~isfield(parm, 'unit'),   parm.unit       =''; end
+if ~isfield(parm, 'n_realisation'),   parm.n_realisation       =1; end
+% Run option
+if ~isfield(parm, 'neigh'),  parm.neigh      =1; end
+if ~isfield(parm, 'nscore'), parm.nscore     =1; end
+if ~isfield(parm, 'cstk'),   parm.cstk       =1; end
+if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end
+% Plot
+if isfield(parm, 'plot')
+    if ~isfield(parm.plot, 'bsgs'),  parm.plot.bsgs   =0; end
+    if ~isfield(parm.plot, 'ns'),    parm.plot.ns     =0; end
+    if ~isfield(parm.plot, 'sb'),    parm.plot.sb     =0; end
+    if ~isfield(parm.plot, 'kernel'),parm.plot.kernel =0; end
+    if ~isfield(parm.plot, 'fitvar'),parm.plot.fitvar =0; end
+    if ~isfield(parm.plot, 'krig'),  parm.plot.krig   =0; end
+else
+    parm.plot.bsgs   =0;
+    parm.plot.ns     =0;
+    parm.plot.sb     =0;
+    parm.plot.kernel =0;
+    parm.plot.fitvar =0;
+    parm.plot.krig   =0;
+end
+% Kriging parameter
+if ~isfield(parm, 'nb_neigh'),   parm.nb_neigh    = [2 2 2 2 0; 7 7 7 7 10]; end
+if isfield(parm, 'k')
+    if isfield(parm.k, 'range')
+        if ~isfield(parm.k.range, 'min'),parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2]; end
+        if ~isfield(parm.k.range, 'max'),parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2]; end
+    else
+        parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2];
+        parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2];
+    end
+    if isfield(parm.k, 'sb')
+        if ~isfield(parm.k.sb, 'nx'),    parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3); end
+        if ~isfield(parm.k.sb, 'ny'),    parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3); end
+    else
+        parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3);
+        parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3);
+    end
+else
+    parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2];
+    parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2];
+    parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3);
+    parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3);
+end
+
 
 %%
 % * *VARIOGRAM INPUT*
 if parm.fitvar
     [k.range, k.var] = fit_variogramm(X,Z,parm.plot.fitvar, X_true);
 else % default variogramm 
-    k.range = parm.covar.modele(1,2:3);
+    k.range  = parm.covar.modele(1,2:3);
     k.var    = parm.covar.c;
 end
 k.rotation = 0;
 k.model = [4 k.range k.rotation; 1 1 1 1];
 k.wradius = 1.3;
-k.nb_neigh  = [2 2 2 2; 10 10 10 10]; % min and max number of point
+k.nb_neigh  = parm.nb_neigh; % min and max number of point
+
 
 %%
 % * *SEARCHING WINDOWS:* 
 % creationg of the Super Block Grid 
 if parm.neigh
-    k.sb.nx = ceil(grid{end}.nx/20); % number of superblock grid
-    k.sb.ny = ceil(grid{end}.ny/20);
-    [k, X] = SuperBlockGridCreation(k, grid{end}.x(end), grid{end}.y(end), X, parm.plot.sb);
+    k.sb.nx = parm.k.sb.nx; % number of superblock grid
+    k.sb.ny = parm.k.sb.ny;
+    [k, X] = SuperBlockGridCreation(k, grid{end}.x(end), grid{end}.y(end), X, parm.plot.sb,parm.nb_neigh(2,5));
 end
 
 %% Non-parametric Relationship
@@ -119,7 +173,9 @@ for scale_i=1:numel(parm.scale) % for each scale
     X.d(hard_data_idx)=[];
     X.x(hard_data_idx)=[];
     X.y(hard_data_idx)=[];
-    if parm.neigh; k.sb.mask(:,:,hard_data_idx)=[];  end
+    if parm.neigh; 
+        k.sb.mask(:,:,hard_data_idx)=[];
+    end
     X.n=numel(X.d);
     clear hd i_sim hard_data_idx
     
@@ -142,9 +198,21 @@ for scale_i=1:numel(parm.scale) % for each scale
     if parm.neigh
         [k.ss.el.X, k.ss.el.Y] = meshgrid(0:max(ceil(k.range(1)*k.wradius/grid{s}.dx),ceil(k.range(2)*k.wradius/grid{s}.dy)));% grid{s} of searching windows
         [k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid{s}.dx, k.ss.el.Y*grid{s}.dy, k.rotation, k.range); % transforms the grid{s}
-        k.ss.el.dist = sqrt(k.ss.el.X_T.^2 + k.ss.el.Y_T.^2);
+        k.ss.el.dist = sqrt(k.ss.el.X_T.^2 + k.ss.el.Y_T.^2); % find distence
         [k.ss.el.dist_s, k.ss.el.dist_idx] = sort(k.ss.el.dist(:)); % sort according distence.
-        k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); k.ss.el.Y_s=k.ss.el.Y(k.ss.el.dist_idx);
+        k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); % sort the axis
+        k.ss.el.Y_s=k.ss.el.Y(k.ss.el.dist_idx);
+
+        ss_id = bsxfun(@ge,k.ss.el.X_s,abs(k.qs2(:,1))') & bsxfun(@ge,k.ss.el.Y_s,abs(k.qs2(:,2))');
+        k.ss.el.X_f=zeros(sum(ss_id(:,1)),4); 
+        k.ss.el.Y_f=k.ss.el.X_f; 
+        k.ss.el.dist_f=k.ss.el.X_f; 
+        
+        for q=1:4
+            k.ss.el.X_f(:,q) = k.qs(q,1) * k.ss.el.X_s(ss_id(:,q)); 
+            k.ss.el.Y_f(:,q) = k.qs(q,2) * k.ss.el.Y_s(ss_id(:,q));
+            k.ss.el.dist_f(:,q) = k.ss.el.dist_s(ss_id(:,q));
+        end
     end
     
     %% Generate the order for visting cells
@@ -180,7 +248,17 @@ for scale_i=1:numel(parm.scale) % for each scale
             Y{scale_i}.pt.y = Y{scale_i}.sim.x_r(i_pt); % Find the current point position on the grid{s}. It will be used on each realisation.
             Y{scale_i}.pt.x = Y{scale_i}.sim.y_r(i_pt);
             k0 = kringing_coef(Y{scale_i},X,k,parm,1); % Kriging.
+            % variance of the kriging
+            Y{scale_i}.pt.s = k0.s;
         end
+        
+        % * *LIKELIHOOD*
+        % We first find the secondary value (and error) (Z.d, Z.std) to
+        % create a pdf. This pdf is then multiply inside the kernel to get
+        % the density. The likelihood is only...
+        Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
+        Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
+        Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
 
         for i_realisation=1:parm.n_realisation
 
@@ -190,6 +268,8 @@ for scale_i=1:numel(parm.scale) % for each scale
                 Y{scale_i}.pt.y = Y{scale_i}.sim.x_r{i_realisation}(i_pt); % Find the current point position on the grid{s}. changing for each realisation
                 Y{scale_i}.pt.x = Y{scale_i}.sim.y_r{i_realisation}(i_pt);
                 k0 = kringing_coef(Y{scale_i},X,k,parm,i_realisation);
+                % variance of the kriging
+                Y{scale_i}.pt.s = k0.s;
             end
 
             if parm.neigh % if option smart neihbour is selected
@@ -202,40 +282,13 @@ for scale_i=1:numel(parm.scale) % for each scale
                 Y{scale_i}.pt.m = k0.lambda'* XY_ns(k0.mask);
             end
 
-            % variance of the kriging
-            Y{scale_i}.pt.s = k0.s;
 
             %%
             % * * N-SCORE PRIOR DISTRIBUTION*
             % Back transform the normal distribution (from krigeage) in original space in the kernel.y grid{s}. this become the prior distribution
             Y{scale_i}.pt.prior = Nscore.dist(Y{scale_i}.pt.m, sqrt(Y{scale_i}.pt.s));
 
-            %%
-            % * *LIKELIHOOD*
-            % We first find the secondary value (and error) (Z.d, Z.std) to
-            % create a pdf. This pdf is then multiply inside the kernel to get
-            % the density. The likelihood is only...
-            Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
-            Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
-            Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
-
-            %%
-            % * *NEW grid{s} p*
-            % This need to be transform in normal space to be combine with
-            % kriging estimate. We difine a new grid{s} p  in normal space for 
-            % both the likelihood (interpolation is needed) and kriging.
-            % p is limited at the coordinate which reprensent 0.1% of
-            % probabllity
-    %         p.lim=0.001;
-    %         p.min = min([ kernel.y_ns(find(Y{scale_i}.pt.likelihood>p.lim,1,'first'))   ;  norminv(p.lim,Y{scale_i}.pt.m,Y{scale_i}.pt.s)]);
-    %         p.max = max([ kernel.y_ns(find(Y{scale_i}.pt.likelihood>p.lim,1,'last'))   ;  norminv(1-p.lim,Y{scale_i}.pt.m,Y{scale_i}.pt.s)]);
-    %         p.d = linspace(p.min,p.max,500);
-    %         
-    %         Y{scale_i}.pt.likelihood = interp1(kernel.y_ns(kernel.y_ns_unique), Y{scale_i}.pt.likelihood(kernel.y_ns_unique), p.d,'pchip');
-    %         Y{scale_i}.pt.likelihood = Y{scale_i}.pt.likelihood /sum(Y{scale_i}.pt.likelihood);
-    %         Y{scale_i}.pt.prior = normpdf(p.d,Y{scale_i}.pt.m,Y{scale_i}.pt.s);
-    %         Y{scale_i}.pt.prior = Y{scale_i}.pt.prior./sum(Y{scale_i}.pt.prior);
-
+            
             %%
             % * *POSTERIORI*
             % Multiply the (nomalized) prior and likelihood to get the (normalised) posteriori
@@ -260,32 +313,34 @@ for scale_i=1:numel(parm.scale) % for each scale
 
             %%
             % * *PLOTIT*
-            if parm.plot.krig && i_realisation==1 && ( mod(i_plot+999,1000)==0  || Y{scale_i}.pt.sampled<-3  || Y{scale_i}.pt.sampled>3 ) % 
+            if parm.plot.krig && i_realisation==1 && ( mod(i_plot+999,1000)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
                 figure(1); clf
 
                 subplot(3,2,[1 4])
-                imagesc(Y.x,Y.y,Y{scale_i}.m_ns{1}); axis tight; lim=axis;hold on
+                imagesc(Y{scale_i}.x,Y{scale_i}.y,Y{scale_i}.m_ns{1}); axis tight; lim=axis;hold on
 
-                t=-pi:0.01:pi;
-                x=Y.x(Y{scale_i}.pt.x)+k.range(1)*cos(t);
-                x2=Y.x(Y{scale_i}.pt.x)+k.wradius*k.range(1)*cos(t);
-                y=Y.y(Y{scale_i}.pt.y)+k.range(2)*sin(t);
-                y2=Y.y(Y{scale_i}.pt.y)+k.wradius*k.range(2)*sin(t);
+                tt=-pi:0.01:pi;
+                x=Y{scale_i}.x(Y{scale_i}.pt.x)+k.range(1)*cos(tt);
+                x2=Y{scale_i}.x(Y{scale_i}.pt.x)+k.wradius*k.range(1)*cos(tt);
+                y=Y{scale_i}.y(Y{scale_i}.pt.y)+k.range(2)*sin(tt);
+                y2=Y{scale_i}.y(Y{scale_i}.pt.y)+k.wradius*k.range(2)*sin(tt);
                 plot(x,y,'--r'); plot(x2,y2,'.-r'); axis(lim)
 
                 lambda_c= 36+60.*(abs(k0.lambda)-min(abs(k0.lambda)))./range(abs(k0.lambda));
 
+                plot(X.x,X.y,'x')
+                
                 if parm.cstk
-                    sel_g=[X.x(k0.sb_mask) X.y(k0.sb_mask); Y.X(k0.ss_mask) Y.Y(k0.ss_mask)];
+                    sel_g=[X.x(k0.sb_mask) X.y(k0.sb_mask); Y{scale_i}.X(k0.ss_mask) Y{scale_i}.Y(k0.ss_mask)];
                     XY_ns = [X.d_ns(k0.sb_mask) ; Y{scale_i}.m_ns{i_realisation}(k0.ss_mask)];
                     scatter(sel_g(:,1),sel_g(:,2),lambda_c,XY_ns,'o','filled','MarkerEdgeColor','w');
-                    scatter(Y.x(Y{scale_i}.pt.x),Y.y(Y{scale_i}.pt.y),100,k0.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
+                    scatter(Y{scale_i}.x(Y{scale_i}.pt.x),Y{scale_i}.y(Y{scale_i}.pt.y),100,k0.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
                 else
                     XY_ns = [X.d_ns; Y{scale_i}.m_ns{1}(~isnan(Y{scale_i}.m_ns{1}))];
-                    sel_g_ini=[X.x X.y; Y.X(~isnan(Y{scale_i}.m{i_realisation})) Y.Y(~isnan(Y{scale_i}.m{i_realisation}))];
+                    sel_g_ini=[X.x X.y; Y{scale_i}.X(~isnan(Y{scale_i}.m{i_realisation})) Y{scale_i}.Y(~isnan(Y{scale_i}.m{i_realisation}))];
                     sel_g = sel_g_ini(k0.mask,:);
                     scatter(sel_g(:,1),sel_g(:,2),lambda_c,XY_ns(k0.mask),'o','filled','MarkerEdgeColor','k');
-                    scatter(Y.x(Y{scale_i}.pt.x),Y.y(Y{scale_i}.pt.y),100,k0.lambda'* XY_ns(k0.mask),'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
+                    scatter(Y{scale_i}.x(Y{scale_i}.pt.x),Y{scale_i}.y(Y{scale_i}.pt.y),100,k0.lambda'* XY_ns(k0.mask),'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
                 end
                 xlabel('x[m]');ylabel('y[m]');colorbar;
 
@@ -299,8 +354,8 @@ for scale_i=1:numel(parm.scale) % for each scale
 
 
                 subplot(3,2,6); hold on;
-                [f,x]=hist(X.d_ini(:),20); plot(x,f/trapz(x,f),'linewidth',2);
-                [f,x]=hist(Z.d(:),40); plot(x,f/trapz(x,f),'linewidth',2);
+                [f,x]=hist(X_ini.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
+                [f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
                 [f,x]=hist(Y{scale_i}.m{i_realisation}(:),50); plot(x,f/trapz(x,f));
                 legend('Well sampling', 'ERT','Simulation')
 
@@ -334,7 +389,7 @@ clear t.tic
 %% 
 % * *SAVE IT*
 if parm.saveit
-    save(['result/', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM'), '.mat'], 'parm', 'Y', 'grid', 't', 'X', 'Z', 'X_true', 'k', 'kernel', 'Nscore')
+    save(['result/', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.mat'], 'parm', 'Y', 'grid', 't', 'X', 'Z', 'X_true', 'k', 'kernel', 'Nscore')
 end
 
 end

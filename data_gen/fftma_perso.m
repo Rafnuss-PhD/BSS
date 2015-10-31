@@ -3,7 +3,7 @@ function field_f=fftma_perso(covar, grid)
 %% Change covar if wanted
 covar2 = covar;
 covar2.c = 1; % [.7;0.3];
-covar2.modele = gen.covar.modele(1,:);
+covar2.modele = covar.modele(1,:);
 
         %% Create super grid 
 grid_s.x_min = grid.x(1);
