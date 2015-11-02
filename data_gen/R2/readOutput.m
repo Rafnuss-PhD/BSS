@@ -41,6 +41,7 @@ else
     output.res=flipud(reshape(data(:,3),grid_G.ny,grid_G.nx));
     
     data=dlmread('R2_forward.dat','\t',1,0);
+    assert(size(data,2)==7)
     output.pseudo=data(:,7);
 end
 

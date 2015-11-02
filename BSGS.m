@@ -11,7 +11,7 @@
 % * Z.x,y   : x,y-coordinate of the secondary variable (1D elts)
 % * Z.std   : Secondary variable std error (2D-grid.nx x grid.n elts)
 % * grid    : grid informations
-% * parm    : Parameters of the simulation
+% * parm    : Parameters of the simulation. see below for explanantion
 %
 % OUTPUT:
 %
@@ -41,19 +41,26 @@ assert(all(size(X.d)==size(X.x)),'X.d and X.x (or X.y) don''t have the same dime
 
 %%
 % * *DEFAULT VALUE*
-if ~isfield(parm, 'seed'),   parm.seed       =rand(); end
-if ~isfield(parm, 'covar'),  parm.covar      =parm.gen.covar; end
-if ~isfield(parm, 'saveit'), parm.saveit     =1; end
-if ~isfield(parm, 'name'),   parm.name       =''; end
-if ~isfield(parm, 'unit'),   parm.unit       =''; end
+if ~isfield(parm, 'seed'),   parm.seed       =rand(); end % see matlab doc for seed
+if ~isfield(parm, 'covar'),  parm.covar      =parm.gen.covar; end % covariance structure : see covardm.m for detail
+if ~isfield(parm, 'saveit'), parm.saveit     =1; end % bolean, save or not the result of simulation
+if ~isfield(parm, 'name'),   parm.name       =''; end % name use for saving file
+if ~isfield(parm, 'unit'),   parm.unit       =''; end % unit of the primary variable, used in plot 
 if ~isfield(parm, 'n_realisation'),   parm.n_realisation       =1; end
 % Run option
-if ~isfield(parm, 'neigh'),  parm.neigh      =1; end
-if ~isfield(parm, 'nscore'), parm.nscore     =1; end
-if ~isfield(parm, 'cstk'),   parm.cstk       =1; end
-if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end
+if ~isfield(parm, 'neigh'),  parm.neigh      =1; end % smart-neighbouring activated or not
+if ~isfield(parm, 'nscore'), parm.nscore     =1; end % use normal score (strongly advice to use it.)
+if ~isfield(parm, 'cstk_s')
+    if ~isfield(parm, 'cstk'),   parm.cstk       = 1; end % constant path and kriging weight activated or not
+    if parm.cstk
+        parm.cstk_s = 0; % will never use cstk
+    else
+        parm.cstk_s = Inf; % will always use cstk
+    end
+end
+if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end % fit the variogram to the data or used the given one in parm.covar
 % Plot
-if isfield(parm, 'plot')
+if isfield(parm, 'plot') % plot or not
     if ~isfield(parm.plot, 'bsgs'),  parm.plot.bsgs   =0; end
     if ~isfield(parm.plot, 'ns'),    parm.plot.ns     =0; end
     if ~isfield(parm.plot, 'sb'),    parm.plot.sb     =0; end
@@ -69,16 +76,16 @@ else
     parm.plot.krig   =0;
 end
 % Kriging parameter
-if ~isfield(parm, 'nb_neigh'),   parm.nb_neigh    = [2 2 2 2 0; 7 7 7 7 10]; end
+if ~isfield(parm, 'nb_neigh'),   parm.nb_neigh    = [2 2 2 2 0; 7 7 7 7 10]; end % neighbouring point number per quandrant and for the hard data
 if isfield(parm, 'k')
-    if isfield(parm.k, 'range')
+    if isfield(parm.k, 'range') % range used in the kernel estimator
         if ~isfield(parm.k.range, 'min'),parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2]; end
         if ~isfield(parm.k.range, 'max'),parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2]; end
     else
         parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2];
         parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2];
     end
-    if isfield(parm.k, 'sb')
+    if isfield(parm.k, 'sb') % super-block grid size (hard data)
         if ~isfield(parm.k.sb, 'nx'),    parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3); end
         if ~isfield(parm.k.sb, 'ny'),    parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3); end
     else
@@ -218,6 +225,13 @@ for scale_i=1:numel(parm.scale) % for each scale
     %% Generate the order for visting cells
     % Randomly permute the cell not known (to be visited). And generate the
     % Y.x and Y.y coordinate in a random order.
+    
+    if s<parm.cstk_s
+        parm.cstk=0;
+    else
+        parm.cstk=1;
+    end
+    
     Y{scale_i}.sim.xy=grid{s}.xy(isnan(Y{scale_i}.m{1}));
     Y{scale_i}.sim.n=numel(Y{scale_i}.sim.xy);
     if parm.cstk
@@ -250,15 +264,17 @@ for scale_i=1:numel(parm.scale) % for each scale
             k0 = kringing_coef(Y{scale_i},X,k,parm,1); % Kriging.
             % variance of the kriging
             Y{scale_i}.pt.s = k0.s;
+            
+            % * *LIKELIHOOD*
+            % We first find the secondary value (and error) (Z.d, Z.std) to
+            % create a pdf. This pdf is then multiply inside the kernel to get
+            % the density. The likelihood is only...
+            Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
+            Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
+            Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
         end
         
-        % * *LIKELIHOOD*
-        % We first find the secondary value (and error) (Z.d, Z.std) to
-        % create a pdf. This pdf is then multiply inside the kernel to get
-        % the density. The likelihood is only...
-        Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
-        Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
-        Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
+
 
         for i_realisation=1:parm.n_realisation
 
@@ -270,6 +286,14 @@ for scale_i=1:numel(parm.scale) % for each scale
                 k0 = kringing_coef(Y{scale_i},X,k,parm,i_realisation);
                 % variance of the kriging
                 Y{scale_i}.pt.s = k0.s;
+                
+                % * *LIKELIHOOD*
+                % We first find the secondary value (and error) (Z.d, Z.std) to
+                % create a pdf. This pdf is then multiply inside the kernel to get
+                % the density. The likelihood is only...
+                Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
+                Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
+                Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
             end
 
             if parm.neigh % if option smart neihbour is selected

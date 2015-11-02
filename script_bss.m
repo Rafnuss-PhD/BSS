@@ -112,17 +112,4 @@ parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
 
 
 
-%% Compare field
-fieldname = {'random_2015-10-26_14-08', 'random_2015-10-26_14-43'};
-figure; hold on; axis equal
-for i= 1:numel(fieldname)
-    load(fieldname{i})
-    data=[];
-    for i_realisation =1:parm.n_realisation
-        data= [data, Y{end}.m{i_realisation}(:)];
-    end
-    D = pdist(data');
-    D_y = cmdscale(D);
-    scatter(D_y(:,1),D_y(:,2))
-end
-legend('variable path','constant path')
+

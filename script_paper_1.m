@@ -28,7 +28,7 @@ parm.gen            = gen;
 parm.nb_neigh   = [0 0 0 0; 0 0 0 0];
 parm.k.sb.nx    = ceil(grid{end}.x(end)/gen.covar.modele(1,2)*3);
 parm.k.sb.ny    = ceil(grid{end}.y(end)/gen.covar.modele(1,3)*3);
-parm.scale      = 6;
+parm.scale      = 10;
 parm.gen.covar.modele  = [4 40 4 0;1 1 1 0];
 parm.gen.covar.c  = [.99;.01];
 
@@ -59,7 +59,7 @@ for i=1:size(list,1)
     end
     plot([gg.nxy],cell2mat(t.scale),LineSpec,'DisplayName',['Number of kriging points: ', num2str(sum(parm.nb_neigh(2,:)))])
 end
-xlabel('Grid size'); label('Time [s]')
+xlabel('Grid size'); ylabel('Time [s]')
 ax = gca; ax.XTick=sort([ax.XTick,[gg.nxy]]);
 legend(ax,'show')
 
@@ -87,6 +87,8 @@ parm.neigh = 1;
 parm.scale = 1:10;
 parm.n_realisation  = 1; parm.name = 'kcst1-1';
 BSGS(sigma,Sigma,sigma_true,grid,parm);
+parm.n_realisation  = 2; parm.name = 'kcst1-2';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
 parm.n_realisation  = 5; parm.name = 'kcst1-5';
 BSGS(sigma,Sigma,sigma_true,grid,parm);
 parm.n_realisation  = 20; parm.name = 'kcst1-20';
@@ -100,3 +102,106 @@ parm.n_realisation  = 2; parm.name = 'kcst0-2';
 BSGS(sigma,Sigma,sigma_true,grid,parm);
 parm.n_realisation  = 10; parm.name = 'kcst0-10';
 BSGS(sigma,Sigma,sigma_true,grid,parm);
+parm.n_realisation  = 30; parm.name = 'kcst0-30';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+
+figure; hold on;
+list = ls('result/SimilarToPaolo/kcst*');
+for i=1:size(list,1)
+    load(strtrim(list(i,:)))
+    gg=[grid{parm.scale}];
+    if parm.cstk
+        LineSpec = '--x';
+    else
+        LineSpec = '-o';
+    end
+    plot([gg.nxy],cell2mat(t.scale),LineSpec,'DisplayName',['Same path: ' num2str(parm.cstk) '. Number of realisation: ', num2str(parm.n_realisation)])
+end
+xlabel('Grid size'); ylabel('Time [s]')
+ax = gca; ax.XTick=sort([ax.XTick,[gg.nxy]]);
+legend(ax,'show')
+ax.Yscale='log';
+ax.XScale='log';axis tight;
+
+figure; hold on; xlabel('Number of Realisation'); ylabel('Time [min]')
+%ax = gca; ax.YScale='log'; 
+list = ls('result/SimilarToPaolo/kcst*');
+data_0=[];data_1=[];
+for i=1:size(list,1)
+    load(strtrim(list(i,:)))
+    if parm.cstk
+        LineSpec = 'x';
+        data_1=[data_1;parm.n_realisation,t.global];
+    else
+        LineSpec = 'o';
+        data_0=[data_0;parm.n_realisation,t.global];
+    end
+    scatter(parm.n_realisation,t.global/60,LineSpec,'LineWidth',2)
+end
+
+fit_0=fit(data_0(:,1),data_0(:,2),'a*x+b','StartPoint',[50 100]);
+plot(fit_0)
+fit_1=fit(data_1(:,1),data_1(:,2),'a*x+b','StartPoint',[50 100]);
+plot(fit_1)
+
+
+
+%% Multi-grid scale to optimize time vs exploring space.
+% comnpute from previous point the number of realisation which last 10min
+load('result/SimilarToPaolo/SimilarToPaolo_Zstd_corrected.mat');parm.gen = gen;
+parm.neigh = 1; 
+parm.nb_neigh  = [0 0 0 0 0; 5 5 5 5 5];
+parm.scale = 1:10;
+parm.cstk = true;
+parm.n_realisation  = 11; parm.name = 'kcst1-11';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+parm.cstk = false;
+parm.n_realisation  = 4; parm.name = 'kcst0-4';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+
+parm.cstk_s=9; % last 2 scale will be with cst path
+parm.n_realisation  = 9; parm.name = 'kcst9-9';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+
+fieldname = {'kcst0-4_2015-11-02_12-15-06', 'kcst1-11_2015-11-02_11-54-02','kcst9-9_2015-11-02_12-32-44'};
+figure; hold on; axis equal
+for i= 1:numel(fieldname)
+    load(['result/Cstk-space-exploration/' fieldname{i}])
+    data=[];
+    for i_realisation =1:parm.n_realisation
+        data= [data, Y{end}.m{i_realisation}(:)];
+    end
+    D = pdist(data');
+    D_y = cmdscale(D);
+    scatter(D_y(:,1),D_y(:,2),'DisplayName',['Identical path : ', num2str(parm.cstk), ' in ' num2str(round(t.global/60)) 'min'])
+end
+ax = gca;legend(ax,'show')
+
+figure; 
+sum_field=cell(3,2);
+for i= 1:numel(fieldname)
+    load(['result/Cstk-space-exploration/' fieldname{i}])
+    sum_field{i,1}=nan(grid{end}.ny,grid{end}.nx);
+    sum_field{i,2}=nan(grid{end}.ny,grid{end}.nx);
+    for x = 1:grid{end}.nx
+        for y = 1:grid{end}.ny
+            data=[];
+            for i_realisation =1:parm.n_realisation
+                data= [data, Y{end}.m{i_realisation}(y,x)];
+            end
+            sum_field{i,1}(y,x) = mean(data);
+            sum_field{i,2}(y,x) = std(data);
+        end
+    end
+    
+end
+figure;
+c_axis_1=[min(min([sum_field{:,1}])) max(max([sum_field{:,1}]))];
+c_axis_2=[min(min([sum_field{:,2}])) max(max([sum_field{:,2}]))];
+
+subplot(3,2,1);imagesc(sum_field{1,1}); caxis(c_axis_1)
+subplot(3,2,2);imagesc(sum_field{1,2}); caxis(c_axis_2)
+subplot(3,2,3);imagesc(sum_field{2,1}); caxis(c_axis_1)
+subplot(3,2,4);imagesc(sum_field{2,2}); caxis(c_axis_2)
+subplot(3,2,5);imagesc(sum_field{3,1}); caxis(c_axis_1)
+subplot(3,2,6);imagesc(sum_field{3,2}); caxis(c_axis_2)
