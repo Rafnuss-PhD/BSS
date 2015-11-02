@@ -151,19 +151,15 @@ plot(fit_1)
 load('result/SimilarToPaolo/SimilarToPaolo_Zstd_corrected.mat');parm.gen = gen;
 parm.neigh = 1; 
 parm.nb_neigh  = [0 0 0 0 0; 5 5 5 5 5];
-parm.scale = 1:10;
+parm.scale = 1:8;
 parm.cstk = true;
-parm.n_realisation  = 11; parm.name = 'kcst1-11';
+parm.n_realisation  = 20; parm.name = 'kcst1-11';
 BSGS(sigma,Sigma,sigma_true,grid,parm);
 parm.cstk = false;
 parm.n_realisation  = 4; parm.name = 'kcst0-4';
 BSGS(sigma,Sigma,sigma_true,grid,parm);
 
-parm.cstk_s=9; % last 2 scale will be with cst path
-parm.n_realisation  = 9; parm.name = 'kcst9-9';
-BSGS(sigma,Sigma,sigma_true,grid,parm);
-
-fieldname = {'kcst0-4_2015-11-02_12-15-06', 'kcst1-11_2015-11-02_11-54-02','kcst9-9_2015-11-02_12-32-44'};
+fieldname = {'kcst0-4_2015-11-02_12-15-06', 'kcst1-11_2015-11-02_11-54-02','kcst8-9_2015-11-02_14-29-51'};
 figure; hold on; axis equal
 for i= 1:numel(fieldname)
     load(['result/Cstk-space-exploration/' fieldname{i}])
@@ -176,6 +172,7 @@ for i= 1:numel(fieldname)
     scatter(D_y(:,1),D_y(:,2),'DisplayName',['Identical path : ', num2str(parm.cstk), ' in ' num2str(round(t.global/60)) 'min'])
 end
 ax = gca;legend(ax,'show')
+
 
 figure; 
 sum_field=cell(3,2);
@@ -195,13 +192,62 @@ for i= 1:numel(fieldname)
     end
     
 end
+
 figure;
 c_axis_1=[min(min([sum_field{:,1}])) max(max([sum_field{:,1}]))];
 c_axis_2=[min(min([sum_field{:,2}])) max(max([sum_field{:,2}]))];
-
 subplot(3,2,1);imagesc(sum_field{1,1}); caxis(c_axis_1)
 subplot(3,2,2);imagesc(sum_field{1,2}); caxis(c_axis_2)
 subplot(3,2,3);imagesc(sum_field{2,1}); caxis(c_axis_1)
 subplot(3,2,4);imagesc(sum_field{2,2}); caxis(c_axis_2)
 subplot(3,2,5);imagesc(sum_field{3,1}); caxis(c_axis_1)
 subplot(3,2,6);imagesc(sum_field{3,2}); caxis(c_axis_2)
+
+
+%% Multi-grid scale to optimize time vs exploring space.
+parm.scale = 1:6;
+n_realisation = 1:10;
+cstk_s        = 0:7;
+[N_realisation, cstk_S]=meshgrid(n_realisation,cstk_s);
+parfor i=1:numel(N_realisation)
+    parm1=parm;
+    parm1.cstk_s=cstk_S(i);
+    parm1.n_realisation  = N_realisation(i);%n_realisation(i);
+    parm1.name = ['kcst' num2str(parm1.cstk_s) '-' num2str(parm1.n_realisation)];
+    BSGS(sigma,Sigma,sigma_true,grid,parm1);
+end
+
+
+
+%ax = gca; ax.YScale='log'; 
+list = ls('result/Cstk-space-exploration-2/kcst*');
+data=[];
+for i=1:size(list,1)
+    load(['result/Cstk-space-exploration-2/' strtrim(list(i,:))])
+    data=[data;parm.n_realisation,parm.cstk_s,t.global/60, std2([Y{end}.m{:}])];
+end
+
+figure; hold on; xlabel('Number of Realisation'); ylabel('Scale from which path is constant'); title('Time'); hold on; colorbar
+F = scatteredInterpolant(data(:,1),data(:,2),data(:,3));
+[xq,yq] = meshgrid(min(data(:,1)):max(data(:,1)), min(data(:,2)):max(data(:,2)));
+contourf(xq,yq,F(xq,yq));
+scatter(data(:,1),data(:,2),[],data(:,3),'MarkerEdge','k')
+
+
+
+%% Neighbouring improvement
+addpath(genpath('./.')); load('result/Random_Neigh/Random_10x10_2015-11-02_17-00.mat')
+parm.gen            = gen;
+parm.nscore         = true;
+parm.likelihood     = false;
+parm.n_realisation  = 1;
+
+parm.scale          = 1:6;
+parm.neigh          = true;
+parm.nb_neigh       = [0 0 0 0 0; 5 5 5 5 5];
+%parm.k.sb.nx        = ceil(grid{end}.x(end)/gen.covar.modele(1,2)*3);
+%parm.k.sb.ny        = ceil(grid{end}.y(end)/gen.covar.modele(1,3)*3);
+parm.scale          = 10;
+parm.gen.covar.modele  = [4 40 4 0;1 1 1 0];
+parm.gen.covar.c  = [.99;.01];
+

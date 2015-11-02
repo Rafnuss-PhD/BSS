@@ -35,10 +35,10 @@ gen.ymax = 20; %total hight in unit [m]
 % Scale define the subdivision of the grid (multigrid). At each scale, the
 % grid size is $(2^gen.scale.x(i)-1) \times (2^gen.scale.y(i)-1)$ 
 gen.scale.x = [1:10];
-gen.scale.y = [1:6 6 6 6 6];
+gen.scale.y = [1:10];
 
 % Generation Method.
-gen.method              = 'fromRho';% 'fromRho';   
+gen.method              = 'Random';% 'fromRho';   
 % 'Paolo':              load paolo initial model and fit it to the created grid
 % 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
 % 'fromRho':            idem
@@ -46,7 +46,7 @@ gen.method              = 'fromRho';% 'fromRho';
 % Generation parameter
 gen.samp                = 1;                     % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 3;          % number of well or number of point
-gen.covar.modele        = [4 160 15 0; 1 1 1 0]; % covariance structure
+gen.covar.modele        = [4 100 10 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
 gen.mu                  = .27; % parameter of the first field. 
 gen.std                 = .06;
@@ -63,7 +63,7 @@ gen.Rho.dmin.tolerance    = 1;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'Very_large_1millionscells';
+gen.name                = 'Random_10x10';
 gen.seed                = 123456;
 
 % Run the function

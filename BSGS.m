@@ -47,6 +47,7 @@ if ~isfield(parm, 'saveit'), parm.saveit     =1; end % bolean, save or not the r
 if ~isfield(parm, 'name'),   parm.name       =''; end % name use for saving file
 if ~isfield(parm, 'unit'),   parm.unit       =''; end % unit of the primary variable, used in plot 
 if ~isfield(parm, 'n_realisation'),   parm.n_realisation       =1; end
+if ~isfield(parm, 'likelihood'),   parm.likelihood       =1; end
 % Run option
 if ~isfield(parm, 'neigh'),  parm.neigh      =1; end % smart-neighbouring activated or not
 if ~isfield(parm, 'nscore'), parm.nscore     =1; end % use normal score (strongly advice to use it.)
@@ -316,7 +317,11 @@ for scale_i=1:numel(parm.scale) % for each scale
             %%
             % * *POSTERIORI*
             % Multiply the (nomalized) prior and likelihood to get the (normalised) posteriori
-            Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior;%.* Y{scale_i}.pt.likelihood;
+            if parm.likelihood
+                Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior.* Y{scale_i}.pt.likelihood;
+            else
+                Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior;
+            end
             Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.post_pdf./sum(Y{scale_i}.pt.post_pdf);
 
             %%
