@@ -95,14 +95,16 @@ if isfield(parm, 'k')
     end
     if ~isfield(parm.k, 'wradius'),    parm.k.wradius   = 1.3; end
 else
-    parm.k.nb_neigh   = [0 0 0 0 0; 5 5 5 5 5]; 
+    assert(isfield(parm, 'gen'),'You need to define parm.covar or parm.gen')
+    parm.k.model     = parm.gen.covar.modele; 
+    parm.k.var       = parm.gen.covar.c; 
+    parm.k.nb_neigh  = [0 0 0 0 0; 5 5 5 5 5]; 
     parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2];
     parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2];
-    parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3);
-    parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3);
-    assert(isfield(parm, 'gen'),'You need to define parm.covar or parm.gen')
-    parm.k.model      = parm.gen.covar.model; 
-    parm.k.var          = parm.gen.covar.c; 
+    parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.k.model(1,2)*3);
+    parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.k.model(1,3)*3);
+    if ~isfield(parm.k, 'wradius'),    parm.k.wradius   = 1.3; end
+    
 end
 parm.k.rotation     = parm.k.model(1,4);
 parm.k.range        = parm.k.model(1,2:3);
@@ -133,7 +135,7 @@ assert(max(parm.scale)<=numel(grid),'This scale of simulation does not exist')
 if parm.neigh
     k.sb.nx = parm.k.sb.nx; % number of superblock grid
     k.sb.ny = parm.k.sb.ny;
-    [k, X] = SuperBlockGridCreation(k, grid{end}.x(end), grid{end}.y(end), X, parm.plot.sb,parm.nb_neigh(2,5));
+    [k, X] = SuperBlockGridCreation(k, grid{end}.x(end), grid{end}.y(end), X, parm.plot.sb, parm.k.nb_neigh(2,5));
 end
 
 %% 
@@ -325,6 +327,7 @@ for scale_i=1:numel(parm.scale) % for each scale
             % Back transform the normal distribution (from krigeage) in original space in the kernel.y grid{s}. this become the prior distribution
             Y{scale_i}.pt.prior = Nscore.dist(Y{scale_i}.pt.m, sqrt(Y{scale_i}.pt.s));
             Y{scale_i}.pt.prior = Y{scale_i}.pt.prior./sum(Y{scale_i}.pt.prior);
+            
             
             %%
             % * *POSTERIORI*
