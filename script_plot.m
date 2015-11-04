@@ -140,40 +140,6 @@ subplot(2,2,4);
 title(sprintf('Inversed resisitivity Rho_{true} | \\mu=%.2f, \\sigma=%.2f',mean(Sigma.d(:)), std(Sigma.d(:))))
 
 
-%%  OUPTUT  
-
-% 
-% %% Kriging
-% figure(1); clf
-% imagesc(Y.x,Y.y,Y.m_ns{1}); axis tight; lim=axis;hold on
-% 
-% t=-pi:0.01:pi;
-% x=Y.x(Y.pt.x)+k.range(1)*cos(t);
-% y=Y.y(Y.pt.y)+k.range(2)*sin(t);
-% plot(x,y,'--r')
-% axis(lim)
-% % scatter(Y.X(~isnan(Y.m_ns{1})),Y.Y(~isnan(Y.m_ns{1})),[],Y.m_ns{1}(~isnan(Y.m_ns{1})),'d','filled','MarkerEdgeColor','k'); axis tight
-% % 
-% % scatter(X.x, X.y,'o','k') % well sampling
-% 
-% lambda_c= 36+50.*(k0.lambda-min(k0.lambda))./range(k0.lambda);
-% XY_ns = [X.d_ns; Y.m_ns{1}(~isnan(Y.m_ns{1}))];
-% 
-% scatter(sel_g(:,1),sel_g(:,2),lambda_c,XY_ns(k0.mask),'o','filled','MarkerEdgeColor','k'); axis tight
-% 
-% 
-% scatter(Y.x(Y.pt.x),Y.y(Y.pt.y),100,k0.lambda'* XY_ns(k0.mask),'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
-% 
-% 
-% % scatter(X.x(k0.mask), X.y(k0.mask),[],lambda_c(1:sum(k0.sb_mask)),'o','filled')
-% % scatter(Y.X(k0.mask), Y.Y(k0.mask),[],lambda_c(sum(k0.sb_mask)+1:end),'d','filled')
-% % 
-% % scatter(X.x(k0.sb_mask), X.y(k0.sb_mask),[],lambda_c(1:sum(k0.sb_mask)),'o','filled')
-% % scatter(Y.X(k0.ss_mask), Y.Y(k0.ss_mask),[],lambda_c(sum(k0.sb_mask)+1:end),'d','filled')
-% 
-% 
-% legend('pt estimated','hard data selected','soft data selected')
-% axis tight;
 
 
 %% BSGS
@@ -200,13 +166,12 @@ end
 
 % Histogramm
 figure; 
-nbins=50;
 subplot(2,1,1);hold on; title('Result')
 [f,x]=hist(X_true(:)); plot(x,f/trapz(x,f),'linewidth',2);
 [f,x]=hist(X.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
 [f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
 for i_sim=1:mm*kk-1
-    [f,x]=hist(Y{end}.m{i_sim}(:),nbins); plot(x,f/trapz(x,f));
+    [f,x]=hist(Y{end}.m{i_sim}(:)); plot(x,f/trapz(x,f));
 end
 legend('True X', 'Sampled X', 'Z', 'realisation')
 
@@ -228,11 +193,11 @@ val_true=nan(grid{parm.scale(end)}.nx,nrbins);
 
 for i=1:grid{parm.scale(end)}.nx
     temp=(sigma_true(:,i)-mean(sigma_true(:,i)))/std(sigma_true(:,i));
-    Emp = variogram(grid{end}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
+    Emp = variogram(grid{end}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',2000);
     val_true(i,:)=Emp.val;
 
     temp=(Y{end}.m{end}(:,i)-mean(Y{end}.m{end}(:,i)))/std(Y{end}.m{end}(:,i));
-    Emp = variogram(grid{parm.scale(end)}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
+    Emp = variogram(grid{parm.scale(end)}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',2000);
     val_m(i,:)=Emp.val;
 end
 figure; subplot(1,2,1);hold on
@@ -249,11 +214,11 @@ val_true=nan(grid{parm.scale(end)}.ny,nrbins);
 
 for i=1:grid{parm.scale(end)}.ny
     temp=(sigma_true(i,:)-mean(sigma_true(i,:)))/std(sigma_true(i,:));
-    Emp = variogram(grid{end}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
+    Emp = variogram(grid{end}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',2000);
     val_true(i,:)=Emp.val;
     
     temp=(Y{end}.m{end}(i,:)-mean(Y{end}.m{end}(i,:)))/std(Y{end}.m{end}(i,:));
-    Emp = variogram(grid{parm.scale(end)}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
+    Emp = variogram(grid{parm.scale(end)}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',2000);
     val_m(i,:)=Emp.val;
 end
 
@@ -266,6 +231,16 @@ plot(Emp.distance,myfun(75,Emp.distance))
 legend('true conductivity','simulated conductivity','theorical equation')
 ylabel('horizontal')
 xlabel('m')
+
+%% Several field statistic
+grid_s=grid{parm.scale(end)};
+YY=reshape([Y{end}.m{:}],grid_s.nx,grid_s.ny,parm.n_realisation);
+YY_mean=mean(YY,3);
+YY_std=std(YY,[],3);
+figure; hold on;
+subplot(3,1,1); imagesc(grid{end}.x,grid{end}.y,X_true); colorbar; title('true primary'); c_axis=caxis;
+subplot(3,1,2); imagesc(grid_s.x,grid_s.y,YY_mean); colorbar;title('Mean of realisations'); caxis(c_axis);
+subplot(3,1,3); imagesc(grid_s.x,grid_s.y,YY_std); colorbar; title('Std of realisations')
 
 
 

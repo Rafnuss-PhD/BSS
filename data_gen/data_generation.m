@@ -27,6 +27,9 @@ function [grid, K_true, phi_true, sigma_true, K, sigma, Sigma, gen] = data_gener
 
 tic
 %% grid{end}
+if numel(gen.scale.x) ~= numel(gen.scale.y)
+    gen.scale.y=[gen.scale.y gen.scale.y(end)*ones(1,numel(gen.scale.x)-numel(gen.scale.y))];
+end
 gen.scale.n = numel(gen.scale.x); % number of scale, ie nb of scale
 grid = cell(gen.scale.n,1);
 
@@ -100,7 +103,7 @@ switch gen.method
         [G, gen.G] = meas_G_grid(grid{end},rho_true,gen.G,gen.plotit); % 5. Simulate low-resolution grid{end} measurement of G
         
     case 'Random'
-        sigma_true=fftma_perso(gen.covar, grid{end});
+        sigma_true      =  gen.mu + gen.std*fftma_perso(gen.covar, grid{end});
         
         sigma           = sampling_pt(grid{end},sigma_true,gen.samp,gen.samp_n);
         phi_true        = NaN;

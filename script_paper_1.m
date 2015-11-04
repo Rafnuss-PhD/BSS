@@ -1,4 +1,40 @@
-% Script paper 1
+%__________________________________________________________________________
+%
+%                           Script paper 1
+%__________________________________________________________________________
+
+
+clear all;clc;addpath(genpath('./.')) 
+
+%% 1. Illustration
+load('result/Generale/generale_test_2015-11-04_12-37');
+parm.gen = gen;
+parm.likelihood = 0;
+parm.scale=5;
+parm.plot.krig = 1;
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+
+
+%% 1. Time Saving.
+
+%% Multiple realisation
+n_realisation = [1 2 5 10];
+parm.scale    = 6;
+
+parm.cstk = true;
+
+
+%% 2. Improve variogram
+
+
+%% Multigrid
+clear all;clc;
+load('result/SimilarToPaolo');parm.gen = gen;parm.likelihood=0;
+parm.scale          = 1:8; parm.name = 'MG1';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+parm.scale          = 8; parm.name = 'MG0';
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+
 
 %% Plot for Smart neighbouring: 
 % This simulation are meant to shows that for large grid, smart
@@ -6,19 +42,18 @@
 
 
 % load the input data
-addpath(genpath('./.')) 
-load('result/Neigh/Very_large_1millionscells_2015-10-27_10-52.mat')
+
 
 % Define std parameter
-parm.n_realisation  = 1;
-parm.scale          = 6;
+parm.n_realisation  = 10;
+parm.scale          = 1:8;
 
 parm.neigh          = true;
 parm.cstk           = true;
 parm.nscore         = true;
 
 % Saving
-parm.saveit         = false;
+parm.saveit         = true;
 parm.gen            = gen;
 
 % Parameter : 
@@ -28,45 +63,15 @@ parm.gen            = gen;
 parm.nb_neigh   = [0 0 0 0; 0 0 0 0];
 parm.k.sb.nx    = ceil(grid{end}.x(end)/gen.covar.modele(1,2)*3);
 parm.k.sb.ny    = ceil(grid{end}.y(end)/gen.covar.modele(1,3)*3);
-parm.scale      = 10;
 parm.gen.covar.modele  = [4 40 4 0;1 1 1 0];
 parm.gen.covar.c  = [.99;.01];
 
 
-% Varying nb of kriging point
-nb_neigh=[4 8 15];
-nb_neigh_hd=[10 10 10];
-neigh = [0 1];
-for i=1:numel(neigh)
-    parm.neigh = neigh(i);
-    name_b = ['neigh' num2str(neigh(i))];
-    for u = 1:numel(nb_neigh)
-        parm.name = [name_b, '_nbk' sprintf('%02d',nb_neigh(u))];
-        parm.nb_neigh(2,:)   = [repmat(nb_neigh(u),1,4) nb_neigh_hd(u)];
-        BSGS(sigma,Sigma,sigma_true,grid,parm);
-    end
-end
-
-figure; hold on;
-list = ls('result/Neigh/neigh*');
-for i=1:size(list,1)
-    load(strtrim(list(i,:)))
-    gg=[grid{parm.scale}];
-    if parm.neigh
-        LineSpec = '--x';
-    else
-        LineSpec = '-o';
-    end
-    plot([gg.nxy],cell2mat(t.scale),LineSpec,'DisplayName',['Number of kriging points: ', num2str(sum(parm.nb_neigh(2,:)))])
-end
-xlabel('Grid size'); ylabel('Time [s]')
-ax = gca; ax.XTick=sort([ax.XTick,[gg.nxy]]);
-legend(ax,'show')
 
 
 
 %% Similar to Paolo
-load('result/SimilarToPaolo/SimilarToPaolo_Zstd_corrected.mat');parm.gen = gen;
+
 
 % With-without Neighbouring / Multi-grid
 parm.nb_neigh  = [0 0 0 0 0; 5 5 5 5 5];
@@ -148,7 +153,7 @@ plot(fit_1)
 
 %% Multi-grid scale to optimize time vs exploring space.
 % comnpute from previous point the number of realisation which last 10min
-load('result/SimilarToPaolo/SimilarToPaolo_Zstd_corrected.mat');parm.gen = gen;
+load('result/SimilarToPaolo/SimilarToPaolo.mat');parm.gen = gen;
 parm.neigh = 1; 
 parm.nb_neigh  = [0 0 0 0 0; 5 5 5 5 5];
 parm.scale = 1:8;
@@ -240,14 +245,46 @@ addpath(genpath('./.')); load('result/Random_Neigh/Random_10x10_2015-11-02_17-00
 parm.gen            = gen;
 parm.nscore         = true;
 parm.likelihood     = false;
-parm.n_realisation  = 1;
+parm.n_realisation  = 5;
 
-parm.scale          = 1:6;
+parm.name = 'Random_Neigh';
+parm.scale          = 6;
 parm.neigh          = true;
-parm.nb_neigh       = [0 0 0 0 0; 5 5 5 5 5];
+parm.nb_neigh       = [0 0 0 0 0; 10 10 10 10 50];
 %parm.k.sb.nx        = ceil(grid{end}.x(end)/gen.covar.modele(1,2)*3);
 %parm.k.sb.ny        = ceil(grid{end}.y(end)/gen.covar.modele(1,3)*3);
-parm.scale          = 10;
-parm.gen.covar.modele  = [4 40 4 0;1 1 1 0];
-parm.gen.covar.c  = [.99;.01];
+BSGS(sigma,Sigma,sigma_true,grid,parm);
+
+% Plot from script_plot to show general statistic of the realisation
+
+% Varying nb of kriging point
+parm.scale          = 1:8;
+nb_neigh=[2 5 15];
+nb_neigh_hd=30;
+neigh = 1;
+for i=1:numel(neigh)
+    for u = 1:numel(nb_neigh)
+        for w = 1:numel(nb_neigh_hd)
+            parm1=parm;
+            parm1.neigh = neigh(i);
+            parm1.name = ['HD_neigh' num2str(neigh(i)) '_nbk' sprintf('%02d',nb_neigh(u))];
+            parm1.nb_neigh(2,:)   = [repmat(nb_neigh(u),1,4) nb_neigh_hd(w)];
+            BSGS(sigma,Sigma,sigma_true,grid,parm1);
+        end
+    end
+end
+
+
+%
+figure; hold on;
+list = ls('result/Random_Neigh/neigh*');
+linespec1={'x','o'};
+linespec2=parula(5);
+for i=1:size(list,1)
+    load(strtrim(list(i,:)))
+    [f,x]=hist(Y{end}.m_ns{end}(:)); 
+    plot(x,f/trapz(x,f),[linespec1{1+parm.neigh},'-'],'Color',linespec2(nb_neigh==parm.nb_neigh(2,4),:),'DisplayName',['neigh: ', num2str(parm.neigh), ' of ' num2str(parm.nb_neigh(2,4)) 'pts in ' num2str(round(t.global/60)) 'min']);
+end
+[f,x]=hist(Nscore.forward(X_true(:))); plot(x,f/trapz(x,f),'linewidth',2,'DisplayName','True X');
+[f,x]=hist(Nscore.forward(X.d(:))); plot(x,f/trapz(x,f),'linewidth',2,'DisplayName','Sampled X');
 

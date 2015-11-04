@@ -96,7 +96,7 @@ end
 
 % disable for time saving
 assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kriging: ')
-assert(size(sel_g,1)>2, ['Not enough point for kriging: '])
+assert(size(sel_g,1)>2, 'Not enough point for kriging: ')
 
 %%
 % * *KRIGING*: Find his kringing value in noraml space:

@@ -27,32 +27,23 @@ function [Y, t, kernel, k] = BSGS(X,Z,X_true,grid,parm)
 t.tic.global = tic;
 
 %% 
-% * *INPUT CHECKOUT*
+% * *INPUT CEHCKING*
 % force input in column
 X.x=X.x(:);X.y=X.y(:);Z.x=Z.x(:);Z.y=Z.y(:);
-% Check the input for correct size dans dimension
-assert(ismatrix(Z.d),'Z is not 2Y.mat_simD');
-assert(all([numel(Z.y), numel(Z.x)]==size(Z.d)),'Z.x,y does not seems to be ok');
-assert(size(X.d,2)==1,'X.d is not a vertical vector 1D');
-assert(size(X.x,2)==1,'X.dx is not a vertical vector 1D');
-assert(size(X.y,2)==1,'X.y is not a vertical vector 1D');
-assert(all(size(X.y)==size(X.x)),'X.x and X.y don''t have the same dimension');
-assert(all(size(X.d)==size(X.x)),'X.d and X.x (or X.y) don''t have the same dimension');
 
-%%
-% * *DEFAULT VALUE*
-if ~isfield(parm, 'seed'),   parm.seed       =rand(); end % see matlab doc for seed
-if ~isfield(parm, 'covar'),  parm.covar      =parm.gen.covar; end % covariance structure : see covardm.m for detail
-if ~isfield(parm, 'saveit'), parm.saveit     =1; end % bolean, save or not the result of simulation
-if ~isfield(parm, 'name'),   parm.name       =''; end % name use for saving file
-if ~isfield(parm, 'unit'),   parm.unit       =''; end % unit of the primary variable, used in plot 
-if ~isfield(parm, 'n_realisation'),   parm.n_realisation       =1; end
-if ~isfield(parm, 'likelihood'),   parm.likelihood       =1; end
+% default value
+if ~isfield(parm, 'seed'),          parm.seed           =rand(); end % see matlab doc for seed
+if ~isfield(parm, 'saveit'),        parm.saveit         =1; end % bolean, save or not the result of simulation
+if ~isfield(parm, 'name'),          parm.name           =''; end % name use for saving file
+if ~isfield(parm, 'unit'),          parm.unit           =''; end % unit of the primary variable, used in plot 
+if ~isfield(parm, 'n_realisation'), parm.n_realisation  =1; end
+if ~isfield(parm, 'likelihood'),    parm.likelihood     =1; end
+if ~isfield(parm, 'scale'),         parm.scale          =1:numel(grid); end
 % Run option
-if ~isfield(parm, 'neigh'),  parm.neigh      =1; end % smart-neighbouring activated or not
-if ~isfield(parm, 'nscore'), parm.nscore     =1; end % use normal score (strongly advice to use it.)
+if ~isfield(parm, 'neigh'),         parm.neigh          =1; end % smart-neighbouring activated or not
+if ~isfield(parm, 'nscore'),        parm.nscore         =1; end % use normal score (strongly advice to use it.)
 if ~isfield(parm, 'cstk_s')
-    if ~isfield(parm, 'cstk'),   parm.cstk       = 1; end % constant path and kriging weight activated or not
+    if ~isfield(parm, 'cstk'),      parm.cstk           = 1; end % constant path and kriging weight activated or not
     if parm.cstk
         parm.cstk_s = 0; % will never use cstk
     else
@@ -76,16 +67,20 @@ else
     parm.plot.fitvar =0;
     parm.plot.krig   =0;
 end
+% Kernel parameter
+if isfield(parm, 'kernel_range') % range used in the kernel estimator
+    if ~isfield(parm.kernel_range, 'min'), parm.kernel_range.min = [min(X.d(:))-2 min(X.d(:))-2]; end
+    if ~isfield(parm.kernel_range, 'max'), parm.kernel_range.max = [max(X.d(:))+2 max(X.d(:))+2]; end
+else
+    parm.kernel_range.min = [min(X.d(:))-2 min(X.d(:))-2];
+    parm.kernel_range.max = [max(X.d(:))+2 max(X.d(:))+2];
+end
 % Kriging parameter
-if ~isfield(parm, 'nb_neigh'),   parm.nb_neigh    = [2 2 2 2 0; 7 7 7 7 10]; end % neighbouring point number per quandrant and for the hard data
+
 if isfield(parm, 'k')
-    if isfield(parm.k, 'range') % range used in the kernel estimator
-        if ~isfield(parm.k.range, 'min'),parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2]; end
-        if ~isfield(parm.k.range, 'max'),parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2]; end
-    else
-        parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2];
-        parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2];
-    end
+    if ~isfield(parm.k, 'nb_neigh')
+        parm.k.nb_neigh   = [0 0 0 0 0; 5 5 5 5 5]; 
+    end 
     if isfield(parm.k, 'sb') % super-block grid size (hard data)
         if ~isfield(parm.k.sb, 'nx'),    parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3); end
         if ~isfield(parm.k.sb, 'ny'),    parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3); end
@@ -93,44 +88,69 @@ if isfield(parm, 'k')
         parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3);
         parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3);
     end
+    if ~isfield(parm.k, 'model') || ~isfield(parm.k, 'c')
+        assert(isfield(parm, 'gen'),'You need to define parm.covar or parm.gen')
+        parm.k.model      = parm.gen.covar.modele; 
+        parm.k.var          = parm.gen.covar.c; 
+    end
+    if ~isfield(parm.k, 'wradius'),    parm.k.wradius   = 1.3; end
 else
+    parm.k.nb_neigh   = [0 0 0 0 0; 5 5 5 5 5]; 
     parm.k.range.min = [min(X.d(:))-2 min(X.d(:))-2];
     parm.k.range.max = [max(X.d(:))+2 max(X.d(:))+2];
     parm.k.sb.nx     = ceil(grid{end}.x(end)/parm.covar.modele(1,2)*3);
     parm.k.sb.ny     = ceil(grid{end}.y(end)/parm.covar.modele(1,3)*3);
+    assert(isfield(parm, 'gen'),'You need to define parm.covar or parm.gen')
+    parm.k.model      = parm.gen.covar.model; 
+    parm.k.var          = parm.gen.covar.c; 
 end
+parm.k.rotation     = parm.k.model(1,4);
+parm.k.range        = parm.k.model(1,2:3);
 
-
-%%
-% * *VARIOGRAM INPUT*
+k = parm.k;
 if parm.fitvar
     [k.range, k.var] = fit_variogramm(X,Z,parm.plot.fitvar, X_true);
-else % default variogramm 
-    k.range  = parm.covar.modele(1,2:3);
-    k.var    = parm.covar.c;
 end
-k.rotation = 0;
-k.model = [4 k.range k.rotation; 1 1 1 1];
-k.wradius = 1.3;
-k.nb_neigh  = parm.nb_neigh; % min and max number of point
+
+% Check the input for correct size dans dimension
+assert(ismatrix(Z.d),'Z is not 2Y.mat_simD');
+assert(all([numel(Z.y), numel(Z.x)]==size(Z.d)),'Z.x,y does not seems to be ok');
+assert(size(X.d,2)==1,'X.d is not a vertical vector 1D');
+assert(size(X.x,2)==1,'X.dx is not a vertical vector 1D');
+assert(size(X.y,2)==1,'X.y is not a vertical vector 1D');
+assert(all(size(X.y)==size(X.x)),'X.x and X.y don''t have the same dimension');
+assert(all(size(X.d)==size(X.x)),'X.d and X.x (or X.y) don''t have the same dimension');
+assert(max(parm.scale)<=numel(grid),'This scale of simulation does not exist')
 
 
 %%
-% * *SEARCHING WINDOWS:* 
-% creationg of the Super Block Grid 
+% * 1. *SUPERBLOCK GRID CREATION* 
+% A mask (Boolean value) of the hard data is assigned to each superblock 
+% as follow: Only the n-closest (normalized by the covariance range) points
+% (inside the ellipse/windows) to the centre of the superblock will be 
+% true. During the kriging, the mask of the superblock of the estimated 
+% point will be used to select the hard to add to the system
 if parm.neigh
     k.sb.nx = parm.k.sb.nx; % number of superblock grid
     k.sb.ny = parm.k.sb.ny;
     [k, X] = SuperBlockGridCreation(k, grid{end}.x(end), grid{end}.y(end), X, parm.plot.sb,parm.nb_neigh(2,5));
 end
 
-%% Non-parametric Relationship
-% Link primary and secondary data.
-kernel = kernel_est(X, Z, parm.k.range, parm.plot.kernel);
+%% 
+% * 2. *NON-PARAMETRIC RELATIONSHIP*
+% The joint pdf of the primary and secondary is build using a bivariate 
+% kernel density estimator (Botev, Grotowski, & Kroese, 2010).
+kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
 
 
 %%
-% * *NSCORE*
+% * 3. *NORMAL SCORE TRANSFORM*
+% Based on the hard data (well samples), a normal score transform is 
+% created using interpolation with power or exponential tail extrapolation.
+% Matlab symbolique function are used for efficient coding. The back 
+% transform of the prior normal distribution function is also created 
+% (return the pdf in the initial space from the mean and variance in the 
+% normal space)
 if parm.nscore
     Nscore = nscore_perso(X.d, 'linear', 'linear', kernel, parm.plot.ns);
 else
@@ -140,20 +160,18 @@ else
 end
 
 %%
-% * *INITIATE*
-assert(max(parm.scale)<=numel(grid)) % assert that simulation scale exist
+% * *INITIATE SIMULATION*
 Y=cell(numel(parm.scale),1); % allocate variable space
 X_ini = X; %keep initial data intact
-
-if parm.neigh; 
-    k.sb.mask_ini = k.sb.mask; 
-end
+if parm.neigh; k.sb.mask_ini = k.sb.mask; end
 
 for scale_i=1:numel(parm.scale) % for each scale
     t.tic.scale = tic;
-    s = parm.scale(scale_i); % find scale level
     
-    % Allocating space for resulting field. The third dimension is for at each simulation because the path is randomized and therefore the order of Y.x,Y.y and Y.d change.
+    %%
+    % * *INITIATE SCALE SIMULATION*
+    s = parm.scale(scale_i); % find scale level
+    % Allocating space for resulting field.
     Y{scale_i}.x=grid{s}.x; 
     Y{scale_i}.y=grid{s}.y; 
     Y{scale_i}.X=grid{s}.X; 
@@ -176,19 +194,13 @@ for scale_i=1:numel(parm.scale) % for each scale
             Y{scale_i}.m{i_sim}(X.x(hard_data_idx(hd))==grid{s}.X & X.y(hard_data_idx(hd))==grid{s}.Y) = X.d(hard_data_idx(hd));
         end
     end
-    
     % Remove the assimilated data from X.
     X.d(hard_data_idx)=[];
     X.x(hard_data_idx)=[];
     X.y(hard_data_idx)=[];
-    if parm.neigh; 
-        k.sb.mask(:,:,hard_data_idx)=[];
-    end
+    if parm.neigh; k.sb.mask(:,:,hard_data_idx)=[]; end
     X.n=numel(X.d);
-    clear hd i_sim hard_data_idx
     
-    %%
-    % * *RESULT ALLOCATION*
     % Create the normal space result matrix and populate with known value 
     Y{scale_i}.m_ns = repmat({nan(size(Y{scale_i}.m{1}))},parm.n_realisation,1); 
     I=~isnan(Y{scale_i}.m{1});
@@ -200,7 +212,7 @@ for scale_i=1:numel(parm.scale) % for each scale
     X.d_ns = Nscore.forward(X.d);
     
     %%
-    % * *SEARCHING-WINDOWS*: create the windows for kringing with the function to compute
+    % * *SPIRAL SEARCH*: create the windows for kringing with the function to compute
     % the normalized distence and the order of visit of the cells.
     % Spiral Search setting: previously data (on grid{s} location)
     if parm.neigh
@@ -275,7 +287,7 @@ for scale_i=1:numel(parm.scale) % for each scale
             Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
         end
         
-
+        
 
         for i_realisation=1:parm.n_realisation
 
@@ -309,10 +321,10 @@ for scale_i=1:numel(parm.scale) % for each scale
 
 
             %%
-            % * * N-SCORE PRIOR DISTRIBUTION*
+            % * * PRIOR DISTRIBUTION*
             % Back transform the normal distribution (from krigeage) in original space in the kernel.y grid{s}. this become the prior distribution
             Y{scale_i}.pt.prior = Nscore.dist(Y{scale_i}.pt.m, sqrt(Y{scale_i}.pt.s));
-
+            Y{scale_i}.pt.prior = Y{scale_i}.pt.prior./sum(Y{scale_i}.pt.prior);
             
             %%
             % * *POSTERIORI*
