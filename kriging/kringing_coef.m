@@ -96,7 +96,7 @@ end
 
 % disable for time saving
 assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kriging: ')
-assert(size(sel_g,1)>2, 'Not enough point for kriging: ')
+% assert(size(sel_g,1)>2, 'Not enough point for kriging: ')
 
 %%
 % * *KRIGING*: Find his kringing value in noraml space:
@@ -108,7 +108,7 @@ k0.lambda = ab_C \ a0_C; % Ordinary
 k0.s = sum(k.var) - k0.lambda'*a0_C;
 
 % disable for time saving
- assert(any(~isnan(k0.lambda)),'the kriging coeff is NaN')
+ assert(~any(isnan(k0.lambda)),'the kriging coeff is NaN')
  assert(k0.s>0,'the kriging std result is less than zero')
 
 end

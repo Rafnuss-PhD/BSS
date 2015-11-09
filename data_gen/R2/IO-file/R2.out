@@ -2,7 +2,7 @@
 
  >> R  2    R e s i s t i v i t y   I n v e r s i o n   v2.7a <<
 
- >> D a t e : 04 - 11 - 2015
+ >> D a t e : 09 - 11 - 2015
  >> Inverse                                                                         
  >> I n v e r s e   S o l u t i o n   S e l e c t e d <<
  >> R e g u l a r i s e d   T y p e <<
@@ -15,14 +15,14 @@
  Processing dataset   1
 
 
- Measurements read:  3772     Measurements rejected:     0
-   Geometric mean of apparent resistivities:  0.16076E+03
+ Measurements read:  4127     Measurements rejected:     0
+   Geometric mean of apparent resistivities:  0.13469E+03
 
    Iteration   1
-     Initial RMS Misfit:         8.64     Number of data ignored:     0
-     Alpha:    302.567   RMS Misfit:        0.59
+     Initial RMS Misfit:         7.65     Number of data ignored:     0
+     Alpha:    153.766   RMS Misfit:        0.56
      Step length set to   1.00000
-     Final RMS Misfit:        0.59
+     Final RMS Misfit:        0.56
 
  Solution converged - Outputing results to file
 
@@ -37,11 +37,11 @@
 
                      Timing Summary
                      ==============
-     Total time taken:                               199. s
+     Total time taken:                               224. s
      Percent time taken forming element equations:    0.4 %
-     Percent time taken solving forward  equations:  15.3 %
+     Percent time taken solving forward  equations:  13.6 %
      Percent time taken forming Jacobian:             1.8 %
-     Percent time taken solving inverse equations:   58.3 %
+     Percent time taken solving inverse equations:   59.6 %
      Percent time taken calculating res. matrix:      0.1 %
 
                      Timing Details
@@ -51,8 +51,8 @@
      Number of calls to solve forward equations:     9060
      Average time taken in call:                      0.0 s
      Number of calls to form Jacobian:                  1
-     Average time taken in call:                      3.5 s
+     Average time taken in call:                      4.0 s
      Number of calls to solve inverse equations:        1
-     Average time taken in call:                    115.8 s
+     Average time taken in call:                    133.2 s
      Number of calls to calculate res. matrix:          0
      Average time taken in call:                      0.0 s

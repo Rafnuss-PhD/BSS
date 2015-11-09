@@ -1,48 +1,33 @@
-function S = variogram_gridded(X,grid,covar)
+function [x,y] = variogram_gridded(X,grid,range,nrbins,subsample_var,subsample_grid)
 
 X=(X-mean(X(:)))./std(X(:));
 
-% Vertical
-nrbins=30;
-vario_v = @(h) semivariogram1D(h,covar.c(1),covar.modele(1,3),'sph',covar.c(2));
-XX=nan(grid.nx,nrbins);
-
-for i=1:grid.nx
-    temp=(X(:,i)-mean(X(:,i)))/std(X(:,i));
-    Emp = variogram(grid.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',20000);
-    XX(i,:)=Emp.val;
-end
-figure; subplot(1,2,1);hold on
-plot(Emp.distance,mean(XX))
-plot(Emp.distance,mean(XX)+std(XX))
-plot(Emp.distance,mean(XX)-std(XX))
-plot(Emp.distance,vario_v(Emp.distance))
-legend('simulated ','theorical')
-ylabel('vertical')
-xlabel('m')
 
 
 % Horizontal
-nrbins=300;
-vario_h = @(h) semivariogram1D(h,covar.c(1),covar.modele(1,2),'sph',covar.c(2));
-XX=nan(grid.ny,nrbins);
-
-for i=1:grid.ny
+xx = nan(min([subsample_grid(1),grid.ny]),nrbins(1));
+for i=ceil(linspace(1,grid.ny, min([subsample_grid(1),grid.ny]) ))
     temp=(X(i,:)-mean(X(i,:)))/std(X(i,:));
-    Emp = variogram(grid.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',20000);
-    XX(i,:)=Emp.val;
+    Emp = variogram(grid.x',temp','nrbins',nrbins(1),'plotit',false,'maxdist',range(1)*1.3,'subsample',subsample_var(1));
+    xx(i,:)=Emp.val;
 end
+x.val = nanmean(xx);
+x.dist = Emp.distance;
 
-subplot(1,2,2);hold on
-y=mean(XX);
-plot(Emp.distance(~isnan(y)),y(~isnan(y)))
-plot(Emp.distance,vario_h(Emp.distance))
-legend('simulated ','theorical')
-ylabel('horizontal')
-xlabel('m')
+% Vertical
+yy=nan(min([subsample_grid(2),grid.nx]),nrbins(2));
+
+for i=1:ceil(linspace(1,grid.nx, min([subsample_grid(2),grid.nx]) ))
+    temp=(X(:,i)-mean(X(:,i)))/std(X(:,i));
+    Emp = variogram(grid.y',temp,'nrbins',nrbins(2),'plotit',false,'maxdist',range(2)*1.3,'subsample',subsample_var(2));
+    yy(i,:)=Emp.val;
+end
+y.val = nanmean(yy);
+y.dist = Emp.distance;
 
 
-
+% vario_h = @(h) semivariogram1D(h,c,range(1),'sph',covar.c(2));
+% vario_v = @(h) semivariogram1D(h,c,range(2),'sph',covar.c(2));
 
 % [ny,nx]=size(Z);
 % x = (1:nx)*dx;

@@ -80,47 +80,46 @@ xlabel('Normalized sensitivity');ylabel('Error between well measurement and inve
 
 
 %% Generated Data  
-
 figure;
 caxis_lim = [min([Sigma.d(:); sigma_true(:)]) max([Sigma.d(:); sigma_true(:)]) ];
 subplot(4,1,1); 
-imagesc(grid{end}.x, grid{end}.y, sigma_true); 
+imagesc(grid_gen.x, grid_gen.y, sigma_true); 
 title('True Porosity \rho_{true}'); 
 xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse');
 subplot(4,1,2); hold on; 
-imagesc(grid{end}.x, grid{end}.y, log10(K_true)); plot(K.x, K.y, 'or'); 
+imagesc(grid_gen.x, grid_gen.y, log10(K_true)); plot(K.x, K.y, 'or'); 
 title('Log True Hydraulic Conudctivity K_{true} and sampled point location K'); 
 xlabel('x[m]'); ylabel('y [m]'); colorbar; set(gca,'Ydir','reverse'); axis tight
 subplot(4,1,3);
-imagesc(grid{end}.x, grid{end}.y, sigma_true); hold on; plot(sigma.x, sigma.y, 'or'); 
+imagesc(grid_gen.x, grid_gen.y, sigma_true); hold on; plot(sigma.x, sigma.y, 'or'); 
 title('True Electrical Conductivity \sigma_{true} and sampled point location g');
 xlabel('x[m]'); ylabel('y [m]');  colorbar; set(gca,'Ydir','reverse'); caxis(caxis_lim);
 subplot(4,1,4); 
-imagesc(grid{end}.x, grid{end}.y, Sigma.d); 
+imagesc(grid_gen.x, grid_gen.y, Sigma.d); 
 title('Inverted Electrical Conductivity \Sigma_{true}'); 
 xlabel('x[m]'); ylabel('y [m]');colorbar; set(gca,'Ydir','reverse'); caxis(caxis_lim);
 
 
 figure;
 subplot(4,1,1); 
-pcolor(grid{end}.x,grid{end}.y,Sigma.std); shading flat; 
+pcolor(grid_gen.x,grid_gen.y,Sigma.std); shading flat; 
 xlabel('x[m]'); ylabel('y [m]'); colorbar; set(gca,'Ydir','reverse');
 title('Electrical Conductivity Tomography error Rho_{std}'); 
 subplot(4,1,2); 
-imagesc(grid{end}.x,grid{end}.y,Sigma.d); 
+imagesc(grid_gen.x,grid_gen.y,Sigma.d); 
 xlabel('x[m]'); ylabel('y [m]');  colorbar;set(gca,'Ydir','reverse'); caxis(caxis_lim);
 title('Electrical Conductivity Tomography G');
 subplot(4,1,3); 
-imagesc(grid{end}.x,grid{end}.y,sigma_true);
+imagesc(grid_gen.x,grid_gen.y,sigma_true);
 xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse'); caxis(caxis_lim);
 title('True Electrical Conductivity rho_{true}');
 subplot(4,1,4); 
-imagesc(grid{end}.x,grid{end}.y,sigma_true-Sigma.d); 
+imagesc(grid_gen.x,grid_gen.y,sigma_true-Sigma.d); 
 xlabel('x[m]'); ylabel('y [m]'); title('rho_{true}-G');colorbar;set(gca,'Ydir','reverse');
 
 % Histogram
 figure;
-nbins_all = grid{end}.nxy/1000;
+nbins_all = grid_gen.nxy/1000;
 nbins_sampled = sigma.n/20;
 subplot(2,2,1);
 [f,x]=hist(sigma_true(:),nbins_all); plot(x,f/trapz(x,f));
@@ -142,6 +141,7 @@ title(sprintf('Inversed resisitivity Rho_{true} | \\mu=%.2f, \\sigma=%.2f',mean(
 
 
 
+
 %% BSGS
 % Multi-grid
 sub_n = min([parm.n_realisation,5])+1;
@@ -152,17 +152,20 @@ end
 figure;
 caxis_limm = [min([X_true(:);Y{end}.m{end}(:)]) max([X_true(:);Y{end}.m{end}(:)])];
 subplot(kk,mm,1); hold on; 
-pcolor(grid{end}.x,grid{end}.y,X_true);
+pcolor(grid_gen.x,grid_gen.y,X_true);
 plot(X.x,X.y,'or')
 shading flat;colorbar; caxis(caxis_limm); axis tight;set(gca,'Ydir','reverse'); xlabel('x[m]'); ylabel('y[m]');
-title([ 'True 1/',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and sampled g: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
+title([ 'True 1/',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and X_{sampled}: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
 for i_sim=2:mm*kk
     subplot(kk,mm,i_sim); 
-    pcolor(grid{parm.scale(end)}.x,grid{parm.scale(end)}.y,Y{end}.m{i_sim-1});
+    pcolor(grid{end}.x,grid{end}.y,Y{end}.m{i_sim-1});
     shading flat;colorbar;caxis(caxis_limm);axis tight;set(gca,'Ydir','reverse'); xlabel('x[m]');ylabel('y[m]');
-    title(['Simmulated 1/', parm.unit, ' gG: \mu=' num2str(mean2(Y{end}.m{i_sim-1})) ' | \sigma=' num2str(std2(Y{end}.m{i_sim-1})) ]);
+    title(['Simmulated ', parm.unit, ': \mu=' num2str(mean2(Y{end}.m{i_sim-1})) ' | \sigma=' num2str(std2(Y{end}.m{i_sim-1})) ]);
 end
-
+if isfield(parm, 'savefig') && parm.savefig
+    filename=['result/', parm.familyname, 'simulations_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
+    savefig(filename)
+end
 
 % Histogramm
 figure; 
@@ -173,7 +176,7 @@ subplot(2,1,1);hold on; title('Result')
 for i_sim=1:mm*kk-1
     [f,x]=hist(Y{end}.m{i_sim}(:)); plot(x,f/trapz(x,f));
 end
-legend('True X', 'Sampled X', 'Z', 'realisation')
+legend('True X', 'Sampled X', 'Z', 'simulation(s)')
 
 subplot(2,1,2);hold on;title('Normal Space')
 [f,x]=hist(Nscore.forward(X_true(:))); plot(x,f/trapz(x,f),'linewidth',2);
@@ -184,56 +187,54 @@ for i_sim=1:mm*kk-1
 end
 legend('True X', 'Sampled X', 'Z', 'realisation')
 
+if isfield(parm, 'savefig') && parm.savefig
+    filename=['result/', parm.familyname, 'histo_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
+    savefig(filename)
+end
+
 
 %% Variogram  
-nrbins=30;
+nrbins = [30 300];
+subsample_var = [2000 2000];
+subsample_grid = [100 1000];
+
+[vario_true.x,vario_true.y] = variogram_gridded(sigma_true,grid_gen,parm.k.range,nrbins,subsample_var,subsample_grid);
+
+vario=cell(parm.n_realisation,1);
+for i_realisation=1:parm.n_realisation
+    [vario{i_realisation}.x,vario{i_realisation}.y] = variogram_gridded(Y{end}.m{i_realisation},grid{end},parm.k.range,nrbins,subsample_var,subsample_grid);
+end
+
 myfun = @(x,h) semivariogram1D(h,1,x,'sph',0);
-val_m=nan(grid{parm.scale(end)}.nx,nrbins);
-val_true=nan(grid{parm.scale(end)}.nx,nrbins);
 
-for i=1:grid{parm.scale(end)}.nx
-    temp=(sigma_true(:,i)-mean(sigma_true(:,i)))/std(sigma_true(:,i));
-    Emp = variogram(grid{end}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',2000);
-    val_true(i,:)=Emp.val;
-
-    temp=(Y{end}.m{end}(:,i)-mean(Y{end}.m{end}(:,i)))/std(Y{end}.m{end}(:,i));
-    Emp = variogram(grid{parm.scale(end)}.y',temp,'nrbins',nrbins,'plotit',false,'maxdist',15,'subsample',2000);
-    val_m(i,:)=Emp.val;
-end
 figure; subplot(1,2,1);hold on
-plot(Emp.distance,mean(val_true))
-plot(Emp.distance,mean(val_m))
-plot(Emp.distance,myfun(5,Emp.distance))
-legend('true conductivity','simulated conductivity','theorical equation')
-ylabel('vertical')
-xlabel('m')
-
-nrbins=300;
-val_m=nan(grid{parm.scale(end)}.ny,nrbins);
-val_true=nan(grid{parm.scale(end)}.ny,nrbins);
-
-for i=1:grid{parm.scale(end)}.ny
-    temp=(sigma_true(i,:)-mean(sigma_true(i,:)))/std(sigma_true(i,:));
-    Emp = variogram(grid{end}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',2000);
-    val_true(i,:)=Emp.val;
-    
-    temp=(Y{end}.m{end}(i,:)-mean(Y{end}.m{end}(i,:)))/std(Y{end}.m{end}(i,:));
-    Emp = variogram(grid{parm.scale(end)}.x',temp','nrbins',nrbins,'plotit',false,'maxdist',150,'subsample',2000);
-    val_m(i,:)=Emp.val;
+plot(vario_true.x.dist,vario_true.x.val,'linewidth',2)
+plot(vario_true.x.dist,myfun(parm.k.range(1),vario_true.x.dist),'linewidth',2)
+for i_realisation=1:parm.n_realisation
+    plot(vario{i_realisation}.x.dist,vario{i_realisation}.x.val)
 end
+
+legend('true conductivity','simulated conductivity','theorical equation')
+ylabel('Horizontal')
+xlabel('m')
 
 subplot(1,2,2);hold on
-y=mean(val_true);
-plot(Emp.distance(~isnan(y)),y(~isnan(y)))
-y=mean(val_m);
-plot(Emp.distance(~isnan(y)),y(~isnan(y)))
-plot(Emp.distance,myfun(75,Emp.distance))
-legend('true conductivity','simulated conductivity','theorical equation')
-ylabel('horizontal')
+plot(vario_true.y.dist,vario_true.y.val,'linewidth',2)
+plot(vario_true.y.dist,myfun(parm.k.range(2),vario_true.y.dist),'linewidth',2)
+for i_realisation=1:parm.n_realisation
+    plot(vario{i_realisation}.y.dist(~isnan(vario{i_realisation}.y.val)), vario{i_realisation}.y.val(~isnan(vario{i_realisation}.y.val)))
+end
+legend('True X','Theorical model','simulation(s)')
+ylabel('Vertical')
 xlabel('m')
 
+if isfield(parm, 'savefig') && parm.savefig
+    filename=['result/', parm.familyname, 'vario_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
+    savefig(filename)
+end
+
 %% Several field statistic
-grid_s=grid{parm.scale(end)};
+grid_s=grid{end};
 YY=reshape([Y{end}.m{:}],grid_s.nx,grid_s.ny,parm.n_realisation);
 YY_mean=mean(YY,3);
 YY_std=std(YY,[],3);
