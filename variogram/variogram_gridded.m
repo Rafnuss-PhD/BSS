@@ -3,7 +3,6 @@ function [x,y] = variogram_gridded(X,grid,range,nrbins,subsample_var,subsample_g
 X=(X-mean(X(:)))./std(X(:));
 
 
-
 % Horizontal
 xx = nan(min([subsample_grid(1),grid.ny]),nrbins(1));
 for i=ceil(linspace(1,grid.ny, min([subsample_grid(1),grid.ny]) ))

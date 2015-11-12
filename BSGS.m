@@ -73,6 +73,7 @@ if ~isfield(parm, 'familyname'),    parm.familyname     =''; end
 if ~isfield(parm, 'unit'),          parm.unit           =''; end % unit of the primary variable, used in plot 
 if ~isfield(parm, 'n_realisation'), parm.n_realisation  =1; end
 if ~isfield(parm, 'likelihood'),    parm.likelihood     =1; end
+if ~isfield(parm, 'lik_weight'),    parm.lik_weight     =0.5; end
 if ~isfield(parm, 'scale')
     parm.scale = repmat(1:max([grid_gen.sx,grid_gen.sy]),2,1); 
     parm.scale(1,parm.scale(1,:)>grid_gen.sx) = grid_gen.sx;
@@ -321,7 +322,7 @@ for scale_i=1:parm.n_scale % for each scale
             Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
         end
         
-        
+       
 
         for i_realisation=1:parm.n_realisation
 
@@ -375,7 +376,7 @@ for scale_i=1:parm.n_scale % for each scale
             % * *POSTERIORI*
             % Multiply the (nomalized) prior and likelihood to get the (normalised) posteriori
             if parm.likelihood
-                Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior.* Y{scale_i}.pt.likelihood;
+                Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior.^(1-parm.lik_weight).* Y{scale_i}.pt.likelihood.^(parm.lik_weight);
             else
                 Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior;
             end

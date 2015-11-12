@@ -38,7 +38,7 @@ gen.sx = 10;
 gen.sy = 7;
 
 % Generation Method.
-gen.method              = 'fromRho';% 'fromRho';   
+gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';   
 % 'Paolo':              load paolo initial model and fit it to the created grid
 % 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
 % 'fromRho':            idem
@@ -46,24 +46,24 @@ gen.method              = 'fromRho';% 'fromRho';
 % Generation parameter
 gen.samp                = 1;                     % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 3;          % number of well or number of point
-gen.covar.modele        = [4 160 15 0; 1 1 1 0]; % covariance structure
+gen.covar.modele        = [4 100 10 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
-gen.mu                  = .27; % parameter of the first field. 
-gen.std                 = .06;
+gen.mu                  = .40; % parameter of the first field. 
+gen.std                 = .04;
 gen.Rho.method          = 'R2'; % 'Paolo' (default for gen.method Paolo), 'noise', 'RESINV3D'
 
 % Electrical inversion
-gen.Rho.grid.nx           = 300;
-gen.Rho.grid.ny           = 60; % log-spaced grid.
+gen.Rho.grid.nx           = 200;
+gen.Rho.grid.ny           = 15; % log-spaced grid.
 gen.Rho.elec.spacing      = 2; % in grid spacing unit.
 gen.Rho.elec.config_max   = 6000; % number of configuration of electrode maximal 
 gen.Rho.dmin.res_matrix   = 1; % resolution matrix: 1-'sensitivity' matrix, 2-true resolution matrix or 0-none
-gen.Rho.dmin.tolerance    = 1;
+gen.Rho.dmin.tolerance    = 10;
 
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'SimilarToPaolo';
+gen.name                = 'SimilarToPaolo2';
 gen.seed                = 123456;
 
 % Run the function
@@ -75,34 +75,36 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
-
-parm.n_realisation  = 5;
-parm.scale          = numel(grid);
-parm.likelihood     = 0;
-
-parm.fitvar         = 0;
 parm.gen            = gen;
 
-parm.seed           = rand();
-parm.neigh          = true;
-parm.cstk           = true;
-parm.nscore         = true;
-parm.unit           = 'Electrical Conductivitiy';
-
-% Saving
-parm.saveit         = true;
-parm.name           = gen.name;
-
-% Ploting
-parm.plot.bsgs      = 0;
-parm.plot.ns        = 0;
-parm.plot.sb        = 0;
-parm.plot.kernel    = 0;
-parm.plot.fitvar    = 0;
-parm.plot.krig      = 0;
-
-parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
-parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
+parm.n_realisation  = 10;
+% parm.scale          = numel(grid);
+parm.likelihood     = 1;
+parm.lik_weight     = 1;
+parm.name           = 'SimilarPaolo_real10_lik1.0';
+% 
+% parm.fitvar         = 0;
+% 
+% parm.seed           = rand();
+% parm.neigh          = true;
+% parm.cstk           = false;
+% parm.nscore         = true;
+% parm.unit           = 'Electrical Conductivitiy';
+% 
+% % Saving
+% parm.saveit         = true;
+% parm.name           = gen.name;
+% 
+% % Ploting
+% parm.plot.bsgs      = 0;
+% parm.plot.ns        = 0;
+% parm.plot.sb        = 0;
+% parm.plot.kernel    = 0;
+% parm.plot.fitvar    = 0;
+% parm.plot.krig      = 0;
+% 
+% parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
+% parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
 
 BSGS(sigma,Sigma,sigma_true,grid_gen,parm);
 

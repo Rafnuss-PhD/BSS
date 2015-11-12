@@ -144,6 +144,7 @@ title(sprintf('Inversed resisitivity Rho_{true} | \\mu=%.2f, \\sigma=%.2f',mean(
 
 %% BSGS
 % Multi-grid
+addpath(genpath('./.'))
 sub_n = min([parm.n_realisation,5])+1;
 if sub_n<4, kk=sub_n;mm=1;
 else kk=ceil(sub_n/2); mm=2; 
@@ -168,24 +169,24 @@ if isfield(parm, 'savefig') && parm.savefig
 end
 
 % Histogramm
-figure; 
+figure; nbins=20;
 subplot(2,1,1);hold on; title('Result')
-[f,x]=hist(X_true(:)); plot(x,f/trapz(x,f),'linewidth',2);
-[f,x]=hist(X.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
-[f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
+[f,x]=hist(X_true(:),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('True X | \\mu=%.2f, \\sigma=%.2f',mean(X_true(:)), std(X_true(:))));
+[f,x]=hist(X.d(:),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Sampled X | \\mu=%.2f, \\sigma=%.2f',mean(X.d(:)), std(X.d(:))));
+[f,x]=hist(Z.d(:),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Z | \\mu=%.2f, \\sigma=%.2f',mean(Z.d(:)), std(Z.d(:))));
 for i_sim=1:mm*kk-1
-    [f,x]=hist(Y{end}.m{i_sim}(:)); plot(x,f/trapz(x,f));
+    [f,x]=hist(Y{end}.m{i_sim}(:),nbins); stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation | \\mu=%.2f, \\sigma=%.2f',mean(Y{end}.m{i_sim}(:)), std(Y{end}.m{i_sim}(:))));
 end
-legend('True X', 'Sampled X', 'Z', 'simulation(s)')
+legend(gca,'show')
 
 subplot(2,1,2);hold on;title('Normal Space')
-[f,x]=hist(Nscore.forward(X_true(:))); plot(x,f/trapz(x,f),'linewidth',2);
-[f,x]=hist(Nscore.forward(X.d(:))); plot(x,f/trapz(x,f),'linewidth',2);
-[f,x]=hist(Nscore.forward(Z.d(:))); plot(x,f/trapz(x,f),'linewidth',2);
+[f,x]=hist(Nscore.forward(X_true(:)),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('True X | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(X_true(:))), std(Nscore.forward(X_true(:)))));
+[f,x]=hist(Nscore.forward(X.d(:)),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Sampled X | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(X.d(:))), std(Nscore.forward(X.d(:)))));
+[f,x]=hist(Nscore.forward(Z.d(:)),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Z | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(Z.d(:))), std(Nscore.forward(Z.d(:)))));
 for i_sim=1:mm*kk-1
-    [f,x]=hist(Nscore.forward(Y{end}.m{i_sim}(:))); plot(x,f/trapz(x,f));
+    [f,x]=hist(Nscore.forward(Y{end}.m{i_sim}(:)),nbins); stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(Y{end}.m{i_sim}(:))), std(Nscore.forward(Y{end}.m{i_sim}(:)))));
 end
-legend('True X', 'Sampled X', 'Z', 'realisation')
+legend(gca,'show')
 
 if isfield(parm, 'savefig') && parm.savefig
     filename=['result/', parm.familyname, 'histo_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
@@ -193,9 +194,40 @@ if isfield(parm, 'savefig') && parm.savefig
 end
 
 
-%% Variogram  
-nrbins = [30 300];
-subsample_var = [2000 2000];
+%% Variogram
+
+
+[gamma_x_s, gamma_y_s] = variogram_gridded_perso(sigma_true);
+for i_realisation=1:parm.n_realisation
+    [gamma_x_y{i_realisation}, gamma_y_y{i_realisation}] = variogram_gridded_perso(Y{end}.m{i_realisation});
+end
+myfun = @(x,h) semivariogram1D(h,1,x,'sph',0);
+
+figure; subplot(1,2,1);hold on
+id= grid_gen.x<parm.k.range(1);
+plot(grid_gen.x(id),gamma_x_s(id),'linewidth',2)
+plot(grid_gen.x(id),myfun(parm.k.range(1),grid_gen.x(id)),'linewidth',2)
+for i_realisation=1:parm.n_realisation
+    plot(grid_gen.x(id),gamma_x_y{i_realisation}(id))
+end
+legend('true conductivity','simulated conductivity','theorical equation')
+ylabel('Horizontal')
+xlabel('m')
+
+subplot(1,2,2);hold on
+id= grid_gen.y<parm.k.range(2);
+plot(grid_gen.y(id),gamma_y_s(id),'linewidth',2)
+plot(grid_gen.y(id),myfun(parm.k.range(2),grid_gen.y(id)),'linewidth',2)
+for i_realisation=1:parm.n_realisation
+    plot(grid_gen.y(id),gamma_y_y{i_realisation}(id))
+end
+legend('True X','Theorical model','simulation(s)')
+ylabel('Vertical')
+xlabel('m')
+
+%% Variogram  old
+nrbins = [10 100];
+subsample_var = [200 200];
 subsample_grid = [100 1000];
 
 [vario_true.x,vario_true.y] = variogram_gridded(sigma_true,grid_gen,parm.k.range,nrbins,subsample_var,subsample_grid);
