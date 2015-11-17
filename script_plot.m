@@ -156,7 +156,7 @@ subplot(kk,mm,1); hold on;
 pcolor(grid_gen.x,grid_gen.y,X_true);
 plot(X.x,X.y,'or')
 shading flat;colorbar; caxis(caxis_limm); axis tight;set(gca,'Ydir','reverse'); xlabel('x[m]'); ylabel('y[m]');
-title([ 'True 1/',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and X_{sampled}: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
+title([ 'True ',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and X_{sampled}: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
 for i_sim=2:mm*kk
     subplot(kk,mm,i_sim); 
     pcolor(grid{end}.x,grid{end}.y,Y{end}.m{i_sim-1});
@@ -266,10 +266,7 @@ if isfield(parm, 'savefig') && parm.savefig
 end
 
 %% Several field statistic
-grid_s=grid{end};
-YY=reshape([Y{end}.m{:}],grid_s.nx,grid_s.ny,parm.n_realisation);
-YY_mean=mean(YY,3);
-YY_std=std(YY,[],3);
+
 figure; hold on;
 subplot(3,1,1); imagesc(grid{end}.x,grid{end}.y,X_true); colorbar; title('true primary'); c_axis=caxis;
 subplot(3,1,2); imagesc(grid_s.x,grid_s.y,YY_mean); colorbar;title('Mean of realisations'); caxis(c_axis);

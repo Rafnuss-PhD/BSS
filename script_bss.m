@@ -46,10 +46,10 @@ gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';
 % Generation parameter
 gen.samp                = 1;                     % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 3;          % number of well or number of point
-gen.covar.modele        = [4 100 10 0; 1 1 1 0]; % covariance structure
+gen.covar.modele        = [4 30 3 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
 gen.mu                  = .40; % parameter of the first field. 
-gen.std                 = .04;
+gen.std                 = .06;
 gen.Rho.method          = 'R2'; % 'Paolo' (default for gen.method Paolo), 'noise', 'RESINV3D'
 
 % Electrical inversion
@@ -63,7 +63,7 @@ gen.Rho.dmin.tolerance    = 10;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'SimilarToPaolo2';
+gen.name                = 'SimilarToPaolo-30';
 gen.seed                = 123456;
 
 % Run the function
@@ -77,11 +77,11 @@ data_generation(gen);
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
 parm.gen            = gen;
 
-parm.n_realisation  = 10;
-% parm.scale          = numel(grid);
-parm.likelihood     = 1;
-parm.lik_weight     = 1;
-parm.name           = 'SimilarPaolo_real10_lik1.0';
+parm.n_realisation  = 1;
+% parm.scale        = numel(grid);
+%parm.likelihood    = 1;
+parm.lik_weight     = 0;
+parm.name           = 'SimilarPaolo_real1_lik0.2';
 % 
 % parm.fitvar         = 0;
 % 

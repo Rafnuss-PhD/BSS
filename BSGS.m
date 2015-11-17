@@ -66,18 +66,26 @@ addpath(genpath('./.'))
 X.x=X.x(:);X.y=X.y(:);X.d=X.d(:);Z.x=Z.x(:);Z.y=Z.y(:);
 
 % default value
-if ~isfield(parm, 'seed'),          parm.seed           =rand(); end
-if ~isfield(parm, 'saveit'),        parm.saveit         =1; end % bolean, save or not the result of simulation
-if ~isfield(parm, 'name'),          parm.name           =''; end % name use for saving file
-if ~isfield(parm, 'familyname'),    parm.familyname     =''; end
-if ~isfield(parm, 'unit'),          parm.unit           =''; end % unit of the primary variable, used in plot 
-if ~isfield(parm, 'n_realisation'), parm.n_realisation  =1; end
-if ~isfield(parm, 'likelihood'),    parm.likelihood     =1; end
-if ~isfield(parm, 'lik_weight'),    parm.lik_weight     =0.5; end
+if ~isfield(parm, 'seed'),          parm.seed           = rand(); end
+if ~isfield(parm, 'saveit'),        parm.saveit         = 1; end % bolean, save or not the result of simulation
+if ~isfield(parm, 'name'),          parm.name           = ''; end % name use for saving file
+if ~isfield(parm, 'familyname'),    parm.familyname     = ''; end
+if ~isfield(parm, 'unit'),          parm.unit           = ''; end % unit of the primary variable, used in plot 
+if ~isfield(parm, 'n_realisation'), parm.n_realisation  = 1; end
+if ~isfield(parm, 'likelihood'),    parm.likelihood     = 1; end
 if ~isfield(parm, 'scale')
     parm.scale = repmat(1:max([grid_gen.sx,grid_gen.sy]),2,1); 
     parm.scale(1,parm.scale(1,:)>grid_gen.sx) = grid_gen.sx;
     parm.scale(2,parm.scale(2,:)>grid_gen.sy) = grid_gen.sy;
+end
+if ~isfield(parm, 'p_w'),
+    parm.p_w     = repmat(0.5, 1, size(parm.scale,2)); 
+elseif numel(parm.p_w)==1
+    parm.p_w     = repmat(parm.p_w, 1,size(parm.scale,2)); 
+elseif numel(parm.p_w) == size(parm.scale,2)
+    parm.p_w    = parm.p_w;
+else
+    parm.p_w     = linspace(parm.p_w(1), parm.p_w(end),size(parm.scale,2)); 
 end
 % Run option
 if ~isfield(parm, 'neigh'),         parm.neigh          =1; end % smart-neighbouring activated or not
@@ -100,8 +108,8 @@ if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'fitvar'),parm.plot.fitvar =0; 
 if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'krig'),  parm.plot.krig   =0; end
 % Kernel parameter
 if ~isfield(parm, 'kernel_range') || ~isfield(parm.kernel_range, 'min') || ~isfield(parm.kernel_range, 'max')% range used in the kernel estimator
-    parm.kernel_range.min = [min(X.d(:))-2 min(X.d(:))-2];
-    parm.kernel_range.max = [max(X.d(:))+2 max(X.d(:))+2];
+    parm.kernel_range.min = [min(Z.d(:))-.2*range(Z.d(:)) min(X.d(:))-.2*range(X.d(:))];
+    parm.kernel_range.max = [max(Z.d(:))+.2*range(Z.d(:)) max(X.d(:))+.2*range(X.d(:))];
 end
 % Kriging parameter
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'nb_neigh')
@@ -126,6 +134,13 @@ k = parm.k;
 
 if parm.fitvar
     [k.range, k.var] = fit_variogramm(X,Z,parm.plot.fitvar, X_true);
+end
+
+% Compute the rot matrix
+for i=1:size(parm.k.model,1)
+    ang=parm.k.model(i,4); cang=cos(ang/180*pi); sang=sin(ang/180*pi);
+    rot = [cang,-sang;sang,cang];
+    parm.k.cx{i} = rot/diag(parm.k.model(i,2:3));
 end
 
 % Check the input for correct size dans dimension
@@ -375,11 +390,7 @@ for scale_i=1:parm.n_scale % for each scale
             %%
             % * *POSTERIORI*
             % Multiply the (nomalized) prior and likelihood to get the (normalised) posteriori
-            if parm.likelihood
-                Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior.^(1-parm.lik_weight).* Y{scale_i}.pt.likelihood.^(parm.lik_weight);
-            else
-                Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior;
-            end
+            Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior.^(1-parm.p_w(scale_i)).* Y{scale_i}.pt.likelihood.^(parm.p_w(scale_i));
             Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.post_pdf./sum(Y{scale_i}.pt.post_pdf);
 
             %%
@@ -448,14 +459,16 @@ for scale_i=1:parm.n_scale % for each scale
                 xlabel('x[m]');ylabel('y[m]');colorbar; 
                 xlim([Y{scale_i}.x(1) Y{scale_i}.x(end)])
                 ylim([Y{scale_i}.y(1) Y{scale_i}.y(end)])
+                set(gca,'YDir','reverse');
 
+                
                 subplot(3,2,5); hold on;
                 plot( kernel.y,Y{scale_i}.pt.prior)
                 plot( kernel.y,Y{scale_i}.pt.likelihood)
                 plot( kernel.y,Y{scale_i}.pt.post_pdf)
                 plot(  kernel.y, max(Y{scale_i}.pt.post_pdf)*Y{scale_i}.pt.post_cdf)
-                plot([Y{scale_i}.pt.sampled Y{scale_i}.pt.sampled],[0 max(Y{scale_i}.pt.post_pdf)],'r')
-                legend('Prior','Likelihood','Posteriori')
+                plot([Y{scale_i}.pt.sampled Y{scale_i}.pt.sampled],[0 max(Y{scale_i}.pt.post_pdf)],'k')
+                legend(['Prior, w=' num2str(1-parm.p_w(scale_i))], ['Likelihood, w=' num2str(parm.p_w(scale_i))],'Posteriori','Post. cdf','sampled location')
 
 
                 subplot(3,2,6); hold on;

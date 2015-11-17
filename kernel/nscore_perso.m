@@ -55,13 +55,13 @@ else
 end
 
 % Lower Tail
-w=ones(dx+1,1); w(2)=1000; % set a very high weight on the last poin to force to be exaclty there (needed for interpolation later)
+w=ones(dx+1,1); w(2)=1000000; % set a very high weight on the last poin to force to be exaclty there (needed for interpolation later)
 options = fitoptions('Weights',w); % trick to force the point at x(1)
 f_low=fit([kernel.y(1); x(1:dx)],[eps; f(1:dx)], fx,options);
 % figure;plot(f_low,[kernel.y(1); x(1:dx)],[eps; f(1:dx)])
 
 % Upper Tail
-w=ones(dx+1,1); w(end-1)=100000;
+w=ones(dx+1,1); w(end-1)=1000000;
 options = fitoptions('Weights',w);
 f_high=fit([x(end-dx+1:end); kernel.y(end)],1-[f(end-dx+1:end); 1-eps],fx,options);
 % figure; plot(f_high,[x(end-dx-1:end); kernel.y(end)],1-[f(end-dx-1:end); 1-eps])
@@ -73,16 +73,20 @@ x2 = [kernel.y(kernel.y<x(1))   ; x ; kernel.y(kernel.y>x(end))];
 f2_b=feval(f_low,kernel.y(kernel.y<x(1)));
 f2_e=1-feval(f_high,kernel.y(kernel.y>x(end)));
 
-% check for monoticity in order to interpolate later
-while any(~diff(f2_b)>0)
-    f2_b=f2_b+eps*(1:(numel(f2_b)))';
-end
-while any(~diff(f2_e)>0)
-    f2_e=f2_e+eps*(1:(numel(f2_e)))';
-end
 
 f2 = [ f2_b  ; f ; f2_e ];
-assert(all(diff(f2)>0))
+
+% check for monoticity in order to interpolate later
+i=0;
+while ~all(diff(f2)>0)
+    id=find(diff(f2)<0);
+    f2(id+1) = f2(id+1) + eps;
+    i=i+1;
+    if i>10
+        error('too many correction...')
+    end
+    f2(id+[-2:2])
+end
 
 % f2 and x2 are the vector on which the interpolation between data and
 % their probabilite is made.

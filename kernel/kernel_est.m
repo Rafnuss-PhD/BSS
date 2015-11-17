@@ -53,9 +53,13 @@ kernel.dens = kernel.dens./sum(kernel.dens(:));
 if plotit
     figure; hold on;
     imagesc(kernel.x, kernel.y, kernel.dens)
-    plot(Zdx, X.d, 'x');
-    xlabel('Primary variable X'); xlabel('Secondary variable Y');
-    axis tight; colorbar
+    scatter(Zdx, X.d,[],X.y, 'x');
+    xlabel('Secondary variable X'); ylabel('Primary variable Y');
+    axis tight; colorbar('Northoutside')
+    plot([0 20],[0 20],'--k')
+    % set(gca,'xticklabel',{''});  xlabel(''); 
+    % set(gca,'yticklabel',{''});  ylabel('');
+    keyboard
 end
 
 

@@ -31,24 +31,7 @@ if parm.neigh
     
     
     % 2. Spiral search per quandrant
-% Option 1: when few points are filled (best when no using multi-grid on large grid)
-% %     ss_x = Y.pt.x + k.ss.el.X_f;
-% %     ss_y = Y.pt.y + k.ss.el.Y_f;
-% %     id_ss_1 = ss_x>0 & ss_y>0 & ss_x<=Y.nx & ss_y<=Y.ny & k.ss.el.dist_f<=k.wradius;
-% % 
-% % 
-% %     sel_ss_id=cell(4,1);
-% %     for q=1:4
-% %         id = sub2ind([Y.ny Y.nx], ss_y(id_ss_1(:,q),q), ss_x(id_ss_1(:,q),q));
-% %         id_ss_2 = find(~isnan(Y.m_ns{i_realisation}( id )));
-% %         sel_ss_id{q} = id(id_ss_2( 1:min(k.nb_neigh(2,q),numel(id_ss_2))) );
-% % 
-% %         % sel_ss_dist = k.ss.el.dist_f(id_ss_1(1:min(k.nb_neigh(2,q),numel(id_ss_2)),q),q);
-% %     end
-% %    k0.ss_mask = [sel_ss_id{1};sel_ss_id{2};sel_ss_id{3};sel_ss_id{4}];
-    
-    
-% Option 2
+
     nn_max=length(k.ss.el.dist_s);
     n=[0 0 0 0];
     sel_ss_idx=cell(4,1);
@@ -100,9 +83,11 @@ assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kri
 
 %%
 % * *KRIGING*: Find his kringing value in noraml space:
-a0_C=covardm(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var);
-ab_C=covardm(sel_g,sel_g,k.model,k.var);
 
+ a0_C=covardm(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var,parm.k.cx);
+ ab_C=covardm(sel_g,sel_g,k.model,k.var,parm.k.cx);
+% a0_C=covardm_old(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var);
+% ab_C=covardm_old(sel_g,sel_g,k.model,k.var);
 
 k0.lambda = ab_C \ a0_C; % Ordinary
 k0.s = sum(k.var) - k0.lambda'*a0_C;
@@ -350,5 +335,24 @@ end
 % 
 %      sort([sel_ss_dist;sel_sb_dist])
 % end
+
+% Option 1: when few points are filled (best when no using multi-grid on large grid)
+% %     ss_x = Y.pt.x + k.ss.el.X_f;
+% %     ss_y = Y.pt.y + k.ss.el.Y_f;
+% %     id_ss_1 = ss_x>0 & ss_y>0 & ss_x<=Y.nx & ss_y<=Y.ny & k.ss.el.dist_f<=k.wradius;
+% % 
+% % 
+% %     sel_ss_id=cell(4,1);
+% %     for q=1:4
+% %         id = sub2ind([Y.ny Y.nx], ss_y(id_ss_1(:,q),q), ss_x(id_ss_1(:,q),q));
+% %         id_ss_2 = find(~isnan(Y.m_ns{i_realisation}( id )));
+% %         sel_ss_id{q} = id(id_ss_2( 1:min(k.nb_neigh(2,q),numel(id_ss_2))) );
+% % 
+% %         % sel_ss_dist = k.ss.el.dist_f(id_ss_1(1:min(k.nb_neigh(2,q),numel(id_ss_2)),q),q);
+% %     end
+% %    k0.ss_mask = [sel_ss_id{1};sel_ss_id{2};sel_ss_id{3};sel_ss_id{4}];
+    
+    
+% Option 2
 
     
