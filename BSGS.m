@@ -72,7 +72,6 @@ if ~isfield(parm, 'name'),          parm.name           = ''; end % name use for
 if ~isfield(parm, 'familyname'),    parm.familyname     = ''; end
 if ~isfield(parm, 'unit'),          parm.unit           = ''; end % unit of the primary variable, used in plot 
 if ~isfield(parm, 'n_realisation'), parm.n_realisation  = 1; end
-if ~isfield(parm, 'likelihood'),    parm.likelihood     = 1; end
 if ~isfield(parm, 'scale')
     parm.scale = repmat(1:max([grid_gen.sx,grid_gen.sy]),2,1); 
     parm.scale(1,parm.scale(1,:)>grid_gen.sx) = grid_gen.sx;

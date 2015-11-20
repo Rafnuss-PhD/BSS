@@ -79,8 +79,7 @@ parm.gen            = gen;
 
 parm.n_realisation  = 1;
 % parm.scale        = numel(grid);
-%parm.likelihood    = 1;
-parm.lik_weight     = 0;
+parm.p_w = [0.5 0];
 parm.name           = 'SimilarPaolo_real1_lik0.2';
 % 
 % parm.fitvar         = 0;
