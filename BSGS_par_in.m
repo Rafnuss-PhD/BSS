@@ -5,6 +5,8 @@ Y=cell(parm.n_scale,1); % allocate variable space
 for scale_i=1:parm.n_scale % for each scale
     t.tic.scale = tic;
     
+    parm.p_w(scale_i)
+    
     %%
     % * *INITIATE SCALE SIMULATION*
     % Allocating space for resulting field.

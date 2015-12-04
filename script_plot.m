@@ -201,25 +201,26 @@ end
 for i_realisation=1:parm.n_realisation
     [gamma_x_y{i_realisation}, gamma_y_y{i_realisation}] = variogram_gridded_perso(Y{end}.m{i_realisation});
 end
-myfun = @(x,h) semivariogram1D(h,1,x,'sph',0);
+myfun = @(x,h) semivariogram1D(h,1,x,parm.k.model(1),0);
 
 figure; subplot(1,2,1);hold on
-id= grid_gen.x<parm.k.range(1);
-plot(grid_gen.x(id),gamma_x_s(id),'linewidth',2)
-plot(grid_gen.x(id),myfun(parm.k.range(1),grid_gen.x(id)),'linewidth',2)
+id= grid{end}.x<parm.k.range(1);
+plot(grid_gen.x(grid_gen.x<parm.k.range(1)),gamma_x_s(grid_gen.x<parm.k.range(1)),'linewidth',2)
+plot(grid{end}.x(id),myfun(parm.k.range(1),grid{end}.x(id)),'linewidth',2)
 for i_realisation=1:parm.n_realisation
-    plot(grid_gen.x(id),gamma_x_y{i_realisation}(id))
+    plot(grid{end}.x(id),gamma_x_y{i_realisation}(id))
 end
 legend('true conductivity','simulated conductivity','theorical equation')
 ylabel('Horizontal')
 xlabel('m')
 
 subplot(1,2,2);hold on
-id= grid_gen.y<parm.k.range(2);
-plot(grid_gen.y(id),gamma_y_s(id),'linewidth',2)
-plot(grid_gen.y(id),myfun(parm.k.range(2),grid_gen.y(id)),'linewidth',2)
+myfun = @(x,h) semivariogram1D(h,1,x,parm.k.model(1),0);
+id= grid{end}.y<parm.k.range(2);
+plot(grid_gen.y(grid_gen.y<parm.k.range(2)),gamma_y_s(grid_gen.y<parm.k.range(2)),'linewidth',2)
+plot(grid{end}.y(id),myfun(parm.k.range(2),grid_gen.y(id)),'linewidth',2)
 for i_realisation=1:parm.n_realisation
-    plot(grid_gen.y(id),gamma_y_y{i_realisation}(id))
+    plot(grid{end}.y(id),gamma_y_y{i_realisation}(id))
 end
 legend('True X','Theorical model','simulation(s)')
 ylabel('Vertical')

@@ -167,8 +167,17 @@ switch gen.method
         sigma       = sampling_pt(grid_gen,sigma_true,gen.samp,gen.samp_n); % 4. Simulate high-resolution point measurement of g
         rho         = sigma;
         rho.d       = 1000./sigma.d;
-        figure;imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar; hold on; scatter(sigma.x,sigma.y,sigma.d)
-        figure; hold on;[f,x]=hist(sigma_true(:)); plot(x,f/trapz(x,f)); [f,x]=hist(sigma.d(:)); plot(x,f/trapz(x,f));
+        
+        figure(1);clf; subplot(2,1,1);imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar; hold on; scatter(sigma.x,sigma.y,sigma.d)
+        subplot(2,1,2); hold on;[f,x]=hist(sigma_true(:)); plot(x,f/trapz(x,f)); [f,x]=hist(sigma.d(:)); plot(x,f/trapz(x,f));
+        
+        [gamma_x, gamma_y] = variogram_gridded_perso(sigma_true); myfun = @(x,h) semivariogram1D(h,1,x,gen.covar.modele(1),0);
+        figure(2); clf; subplot(2,1,1); hold on; plot(grid_gen.x(1:end/2),gamma_x(1:end/2)); plot([gen.covar.modele(1,2) gen.covar.modele(1,2)],[0 1])
+        plot(grid_gen.x(1:end/2),myfun(gen.covar.modele(1,2),grid_gen.x(1:end/2)),'linewidth',2)
+        subplot(2,1,2); hold on;plot(grid_gen.y(1:end/2),gamma_y(1:end/2)); plot([gen.covar.modele(1,3) gen.covar.modele(1,3)],[0 1])
+        plot(grid_gen.y(1:end/2),myfun(gen.covar.modele(1,3),grid_gen.y(1:end/2)),'linewidth',2)
+        
+        
         keyboard;close all;
         
         [Sigma, gen] = Rho_generation(grid_gen,rho_true,gen); % 5. Simulate low-resolution grid_gen measurement of G

@@ -59,6 +59,7 @@ if parm.neigh
     % 3. Combine SuperBlock Point and Spiral Search point.
     sel_g=[X.x(k0.sb_mask) X.y(k0.sb_mask); Y.X(k0.ss_mask) Y.Y(k0.ss_mask)];
     
+    
 
 else
     sel_g_ini=[X.x X.y; Y.X(~isnan(Y.m{i_realisation})) Y.Y(~isnan(Y.m{i_realisation}))]; % remove the u
@@ -79,15 +80,15 @@ end
 
 % disable for time saving
 assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kriging: ')
-% assert(size(sel_g,1)>2, 'Not enough point for kriging: ')
+% assert(size(sel_g,1)>1, 'Not enough point for kriging: ')
 
 %%
 % * *KRIGING*: Find his kringing value in noraml space:
 
- a0_C=covardm(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var,parm.k.cx);
- ab_C=covardm(sel_g,sel_g,k.model,k.var,parm.k.cx);
-% a0_C=covardm_old(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var);
-% ab_C=covardm_old(sel_g,sel_g,k.model,k.var);
+ a0_C=covardm_perso(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var,parm.k.cx);
+ ab_C=covardm_perso(sel_g,sel_g,k.model,k.var,parm.k.cx);
+% a0_C=covardm(sel_g,[Y.x(Y.pt.x) Y.y(Y.pt.y)],k.model,k.var);
+% ab_C=covardm(sel_g,sel_g,k.model,k.var);
 
 k0.lambda = ab_C \ a0_C; % Ordinary
 k0.s = sum(k.var) - k0.lambda'*a0_C;

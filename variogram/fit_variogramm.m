@@ -1,5 +1,24 @@
-function range=fit_variogramm(X,Z,plotit,X_true)
+function k = fit_variogramm(X,Z,parm,X_true)
 
+
+
+
+%% Find the range form Z
+
+[gamma_x, gamma_y] = variogram_gridded_perso(Z.d);
+figure; hold on;
+plot(Z.x(1:end/2),gamma_x(1:end/2))
+plot(Z.y(1:end/2),gamma_y(1:end/2))
+id = grid_gen.x<parm.k.range(1)*3;
+
+
+[gamma_x, gamma_y] = variogram_gridded_perso(phi_true);
+figure; hold on;
+plot(grid_gen.x(1:end/2),gamma_x(1:end/2))
+plot(grid_gen.y(1:end/2),gamma_y(1:end/2))
+
+
+%% vertical
 % LSCurve global fit
 myfun = @(x,h) semivariogram1D(h,x(1),x(2),'sph', x(3)); % x= [ c0(1) range c0(2) (nugguet effect)] 
 options = optimoptions('lsqcurvefit','Display','off');
@@ -55,7 +74,6 @@ if plotit
 end
 
 
-
 %% Return
 
 range = [x_range y_range];
@@ -79,16 +97,6 @@ end
 % plot(Cal.distance,Cal.val);
 % ylabel('\gamma(h)'); xlabel('h')
 % legend('Empirical Variogram vertical','Empirical Variogram horizontal')
-
-
-%% 2D
-% value = (Z.d(:)-mean(Z.d(:)))/std(Z.d(:));
-% Z.X = repmat(Z.x',numel(Z.y),1);
-% Z.Y = repmat(Z.y,1,numel(Z.x));
-% coord = [Z.X(:) Z.Y(:)]; % we add an offset between each line of the 2D data so that each line are corolated separately
-%
-% Emp = variogram(coord,value,'plotit',true,'maxdist',300,'anisotropy',true,'subsample',3000);
-% assert(all(~isnan(Emp.val)),'problem');
 
 
 %% OTHER OLD STUFF

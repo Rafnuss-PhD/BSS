@@ -95,7 +95,7 @@ if ~isfield(parm, 'cstk_s')% cstk_s is the scale at which cst is switch on
         parm.cstk_s = 0; % will never use cstk
     else
         parm.cstk_s = Inf; % will always use cstk
-    end
+%     end
 end
 if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end % fit the variogram to the data or used the given one in parm.covar
 % Plot
@@ -114,7 +114,7 @@ end
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'nb_neigh')
     parm.k.nb_neigh = [0 0 0 0 0; 5 5 5 5 5];
 end 
-if ~isfield(parm, 'k') || ~isfield(parm.k, 'model') || ~isfield(parm.k, 'c')
+if ~isfield(parm, 'k') || ~isfield(parm.k, 'model') || ~isfield(parm.k, 'var')
     assert(isfield(parm, 'gen'),'You need to define parm.covar or parm.gen')
     parm.k.model    = parm.gen.covar.modele; 
     parm.k.var      = parm.gen.covar.c; 
@@ -129,10 +129,11 @@ end
 parm.k.rotation     = parm.k.model(1,4);
 parm.k.range        = parm.k.model(1,2:3);
 
-k = parm.k;
 
 if parm.fitvar
-    [k.range, k.var] = fit_variogramm(X,Z,parm.plot.fitvar, X_true);
+    k = fit_variogramm(X,Z,parm, X_true);
+else
+    k = parm.k;
 end
 
 % Compute the rot matrix
@@ -175,18 +176,6 @@ for scale_i = 1:parm.n_scale
 end
 
 
-%% * 1. *SUPERBLOCK GRID CREATION* 
-% A mask (Boolean value) of the hard data is assigned to each superblock 
-% as follow: Only the n-closest (normalized by the covariance range) points
-% (inside the ellipse/windows) to the centre of the superblock will be 
-% true. During the kriging, the mask of the superblock of the estimated 
-% point will be used to select the hard to add to the system
-if parm.neigh
-    k.sb.nx = parm.k.sb.nx; % number of superblock grid
-    k.sb.ny = parm.k.sb.ny;
-    [k, X] = SuperBlockGridCreation(k, grid_gen.x(end), grid_gen.y(end), X, parm.plot.sb, parm.k.nb_neigh(2,5));
-end
-
 
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
 % The joint pdf of the primary and secondary is build using a bivariate 
@@ -210,7 +199,23 @@ else
 end
 
 
+%% * 1. *SUPERBLOCK GRID CREATION* 
+% A mask (Boolean value) of the hard data is assigned to each superblock 
+% as follow: Only the n-closest (normalized by the covariance range) points
+% (inside the ellipse/windows) to the centre of the superblock will be 
+% true. During the kriging, the mask of the superblock of the estimated 
+% point will be used to select the hard to add to the system
+if parm.neigh
+    k.sb.nx = parm.k.sb.nx; % number of superblock grid
+    k.sb.ny = parm.k.sb.ny;
+    [k, X] = SuperBlockGridCreation(k, grid_gen.x(end), grid_gen.y(end), X, parm.plot.sb, parm.k.nb_neigh(2,5));
+end
+
+
+
 %% * 4. *SIMULATION*
+% Create the normal space primary variable of known data
+X.d_ns = Nscore.forward(X.d);
 Y=cell(parm.n_scale,1); % allocate variable space
 X_ini = X; %keep initial data intact
 if parm.neigh; k.sb.mask_ini = k.sb.mask; end
@@ -247,6 +252,7 @@ for scale_i=1:parm.n_scale % for each scale
     X.d(hard_data_idx)=[];
     X.x(hard_data_idx)=[];
     X.y(hard_data_idx)=[];
+    X.d_ns(hard_data_idx)=[];
     if parm.neigh; k.sb.mask(:,:,hard_data_idx)=[]; end
     X.n=numel(X.d);
     
@@ -257,8 +263,7 @@ for scale_i=1:parm.n_scale % for each scale
         Y{scale_i}.m_ns{i_realisation}(I) = Nscore.forward(Y{scale_i}.m{i_realisation}(I));
     end
 
-    % Create the normal space primary variable of known data
-    X.d_ns = Nscore.forward(X.d);
+
     
     %%
     % * *SPIRAL SEARCH*: create the windows for kringing with the function to compute
@@ -367,6 +372,8 @@ for scale_i=1:parm.n_scale % for each scale
                 XY_ns = [X.d_ns; Y{scale_i}.m_ns{i_realisation}(~isnan(Y{scale_i}.m_ns{i_realisation}))];
                 Y{scale_i}.pt.m = k0.lambda'* XY_ns(k0.mask);
             end
+            
+            assert(~isnan(Y{scale_i}.pt.m),'The result can''t be NaN')
 
 
             %%
@@ -410,11 +417,11 @@ for scale_i=1:parm.n_scale % for each scale
 
             %%
             % * *PLOTIT*
-            if parm.plot.krig && i_realisation==1 && ( mod(i_plot+99,100)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
+            if parm.plot.krig && i_realisation==1 && (i_plot==1 || mod(i_plot+49,50)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
                 figure(1); clf
 
                 subplot(3,2,[1 4]);hold on
-                imagesc(Y{scale_i}.x,Y{scale_i}.y,Y{scale_i}.m_ns{1},'AlphaData',~isnan(Y{scale_i}.m_ns{1})); axis tight; 
+                h1=imagesc(Y{scale_i}.x,Y{scale_i}.y,Y{scale_i}.m_ns{1},'AlphaData',~isnan(Y{scale_i}.m_ns{1}));
 
                 sb_i = min([round((Y{scale_i}.y(Y{scale_i}.pt.y)-k.sb.y(1))/k.sb.dy +1)'; k.sb.ny]);
                 sb_j = min([round((Y{scale_i}.x(Y{scale_i}.pt.x) -k.sb.x(1))/k.sb.dx +1)'; k.sb.nx]);
@@ -426,28 +433,29 @@ for scale_i=1:parm.n_scale % for each scale
                         end
                     end
                 end
-                imagesc(k.sb.x,k.sb.y,windows,'AlphaData',windows*.5)
-                mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.ny+1, k.sb.nx+1),'EdgeColor','k','facecolor','none')
-
+                h2=imagesc(k.sb.x,k.sb.y,windows,'AlphaData',windows*.5);
+                h3=mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.ny+1, k.sb.nx+1),'EdgeColor','k','facecolor','none');
 
                 tt=-pi:0.01:pi;
                 x=Y{scale_i}.x(Y{scale_i}.pt.x)+k.range(1)*cos(tt);
                 x2=Y{scale_i}.x(Y{scale_i}.pt.x)+k.wradius*k.range(1)*cos(tt);
                 y=Y{scale_i}.y(Y{scale_i}.pt.y)+k.range(2)*sin(tt);
                 y2=Y{scale_i}.y(Y{scale_i}.pt.y)+k.wradius*k.range(2)*sin(tt);
-                plot(x,y,'--r'); plot(x2,y2,'-r'); 
-                plot([Y{scale_i}.x(Y{scale_i}.pt.x) Y{scale_i}.x(Y{scale_i}.pt.x)],[min(y2) max(y2)],'.-r')
-                plot([min(x2) max(x2)], [Y{scale_i}.y(Y{scale_i}.pt.y) Y{scale_i}.y(Y{scale_i}.pt.y)],'.-r')
+                h4=plot(x,y,'--r'); h5=plot(x2,y2,'-r');
+                h6=plot([Y{scale_i}.x(Y{scale_i}.pt.x) Y{scale_i}.x(Y{scale_i}.pt.x)],[min(y2) max(y2)],'-r');
+                h7=plot([min(x2) max(x2)], [Y{scale_i}.y(Y{scale_i}.pt.y) Y{scale_i}.y(Y{scale_i}.pt.y)],'-r');
 
                 lambda_c= 36+60.*(abs(k0.lambda)-min(abs(k0.lambda)))./range(abs(k0.lambda));
 
-                plot(X.x,X.y,'x')
+                h8=scatter(X.x,X.y,[],X.d_ns,'s','filled');
 
                 if parm.cstk
+                    n_hd = numel(X.x(k0.sb_mask));
                     sel_g=[X.x(k0.sb_mask) X.y(k0.sb_mask); Y{scale_i}.X(k0.ss_mask) Y{scale_i}.Y(k0.ss_mask)];
                     XY_ns = [X.d_ns(k0.sb_mask) ; Y{scale_i}.m_ns{i_realisation}(k0.ss_mask)];
-                    scatter(sel_g(:,1),sel_g(:,2),lambda_c,XY_ns,'o','filled','MarkerEdgeColor','w');
-                    scatter(Y{scale_i}.x(Y{scale_i}.pt.x),Y{scale_i}.y(Y{scale_i}.pt.y),100,k0.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
+                    h9=scatter(sel_g(1:n_hd,1),sel_g(1:n_hd,2),lambda_c(1:n_hd),XY_ns(1:n_hd),'s','filled','MarkerEdgeColor','k');
+                    h10=scatter(sel_g(n_hd+1:end,1),sel_g(n_hd+1:end,2),lambda_c(n_hd+1:end),XY_ns(n_hd+1:end),'o','filled','MarkerEdgeColor','k');
+                    h11=scatter(Y{scale_i}.x(Y{scale_i}.pt.x),Y{scale_i}.y(Y{scale_i}.pt.y),100,k0.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5);
                 else
                     XY_ns = [X.d_ns; Y{scale_i}.m_ns{1}(~isnan(Y{scale_i}.m_ns{1}))];
                     sel_g_ini=[X.x X.y; Y{scale_i}.X(~isnan(Y{scale_i}.m{i_realisation})) Y{scale_i}.Y(~isnan(Y{scale_i}.m{i_realisation}))];
@@ -458,7 +466,9 @@ for scale_i=1:parm.n_scale % for each scale
                 xlabel('x[m]');ylabel('y[m]');colorbar; 
                 xlim([Y{scale_i}.x(1) Y{scale_i}.x(end)])
                 ylim([Y{scale_i}.y(1) Y{scale_i}.y(end)])
-                set(gca,'YDir','reverse');
+                %set(gca,'YDir','reverse');
+                
+                legend([h3 h6 h8 h9 h10 h11],'Super grid','Window search with quadrant','Hard data point','Selected hard data point','Selected previously simulated point','Simulated Point','Location','northoutside','Orientation','horizontal')
 
                 
                 subplot(3,2,5); hold on;
@@ -483,6 +493,7 @@ for scale_i=1:parm.n_scale % for each scale
             %% Back transform 
             % * *
             Y{scale_i}.m{i_realisation}(Y{scale_i}.pt.y,Y{scale_i}.pt.x) = Y{scale_i}.pt.sampled;
+            assert(~isnan(Nscore.forward(Y{scale_i}.pt.sampled)))
             Y{scale_i}.m_ns{i_realisation}(Y{scale_i}.pt.y,Y{scale_i}.pt.x) = Nscore.forward(Y{scale_i}.pt.sampled); % add only the last simulated point to normal score
 
         end

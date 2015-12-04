@@ -29,27 +29,27 @@ clc; % clear all;
 % store the parameter and |data_generation.m| compute everything
 
 % Grid size
-gen.xmax = 300; %total length in unit [m]
+gen.xmax = 240; %total length in unit [m]
 gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
 % grid size is $(2^gen.scale.x(i)+1) \times (2^gen.scale.y(i)+1)$ 
-gen.sx = 10;
-gen.sy = 7;
+gen.sx = 8;
+gen.sy = 8;
 
 % Generation Method.
-gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';   
+gen.method              = 'Normal-Random';% 'Normal-Random';% 'fromRho';   
 % 'Paolo':              load paolo initial model and fit it to the created grid
 % 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
 % 'fromRho':            idem
 
 % Generation parameter
-gen.samp                = 1;                     % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
-gen.samp_n              = 3;          % number of well or number of point
-gen.covar.modele        = [4 30 3 0; 1 1 1 0]; % covariance structure
+gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
+gen.samp_n              = 4;          % number of well or number of point
+gen.covar.modele        = [4 100 10 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
-gen.mu                  = .40; % parameter of the first field. 
-gen.std                 = .06;
+gen.mu                  = 0; % parameter of the first field. 
+gen.std                 = 1;
 gen.Rho.method          = 'R2'; % 'Paolo' (default for gen.method Paolo), 'noise', 'RESINV3D'
 
 % Electrical inversion
@@ -58,12 +58,12 @@ gen.Rho.grid.ny           = 15; % log-spaced grid.
 gen.Rho.elec.spacing      = 2; % in grid spacing unit.
 gen.Rho.elec.config_max   = 6000; % number of configuration of electrode maximal 
 gen.Rho.dmin.res_matrix   = 1; % resolution matrix: 1-'sensitivity' matrix, 2-true resolution matrix or 0-none
-gen.Rho.dmin.tolerance    = 10;
+gen.Rho.dmin.tolerance    = 1000;
 
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'SimilarToPaolo-30';
+gen.name                = 'Random_10x1';
 gen.seed                = 123456;
 
 % Run the function
@@ -78,8 +78,9 @@ data_generation(gen);
 parm.gen            = gen;
 
 parm.n_realisation  = 1;
-% parm.scale        = numel(grid);
-parm.p_w = [0.5 0];
+ parm.scale        = [7;7];
+% parm.p_w = [0.5 0];
+parm.plot.krig=1;
 parm.name           = 'SimilarPaolo_real1_lik0.2';
 % 
 % parm.fitvar         = 0;
