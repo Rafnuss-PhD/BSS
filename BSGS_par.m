@@ -58,7 +58,7 @@
 %
 
 function [Y, t, kernel, k] = BSGS_par(X,Z,X_true,grid_gen,parm)
-t.tic.global = tic;
+t.global = tic;
 addpath(genpath('./.'))
 
 %% * *INPUT CEHCKING*
@@ -249,7 +249,7 @@ if parm.par
     
     
 else
-    [Y,t]=BSGS_par_in(X, Z, kernel, Nscore, grid, parm);
+    [Y,t.scale]=BSGS_par_in(X, Z, kernel, k, Nscore, grid, parm);
 end
 
 
@@ -258,7 +258,7 @@ if parm.neigh; k.sb.mask = k.sb.mask_ini; end
 clear X_ini k.sb.mask_ini
 
 
-t.global = toc(t.tic.global);
+t.global = toc(t.global );
 
 
 %% * 5. *SAVE IT*

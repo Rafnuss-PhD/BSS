@@ -75,13 +75,13 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
-parm.gen            = gen;
+parm.n_realisation  = 100;
+parm.par = 1;
 
-parm.n_realisation  = 1;
- parm.scale        = [7;7];
 % parm.p_w = [0.5 0];
-parm.plot.krig=1;
-parm.name           = 'SimilarPaolo_real1_lik0.2';
+parm.p_w=[1;1];
+parm.name           = 'Generale_real_pw11';
+%parm.plot.krig =1;
 % 
 % parm.fitvar         = 0;
 % 
@@ -106,7 +106,7 @@ parm.name           = 'SimilarPaolo_real1_lik0.2';
 % parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
 % parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
 
-BSGS(sigma,Sigma,sigma_true,grid_gen,parm);
+BSGS_par(sigma,Sigma,sigma_true,grid_gen,parm);
 
 
 
