@@ -196,7 +196,15 @@ end
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
 % The joint pdf of the primary and secondary is build using a bivariate 
 % kernel density estimator (Botev, Grotowski, & Kroese, 2010).
-kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
+if X.n~=0
+    kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
+else
+    warning('No hard data !')
+    assert(all(parm.p_w(1,:)==0),'The Secondary cannot be used !')
+    kernel.x=linspace(-5,5,100)';
+    kernel.y=kernel.x;
+    kernel.dens=ones(100,100);
+end
 
 
 %% * 3. *NORMAL SCORE TRANSFORM*
@@ -206,11 +214,11 @@ kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
 % transform of the prior normal distribution function is also created 
 % (return the pdf in the initial space from the mean and variance in the 
 % normal space)
-if parm.nscore
+if parm.nscore && X.n~=0
     Nscore = nscore_perso(X.d, 'linear', 'linear', kernel, parm.plot.ns);
 else
-    Nscore.forward = @(x) x;
-    Nscore.inverse = @(x) x;
+    Nscore.forward = @(x) x';
+    Nscore.inverse = @(x) x';
     Nscore.dist    = @(mu,sigma) normpdf(kernel.y,mu,sigma)/sum(normpdf(kernel.y,mu,sigma)); 
 end
 

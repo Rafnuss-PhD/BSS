@@ -141,6 +141,8 @@ title(sprintf('Inversed resisitivity Rho_{true} | \\mu=%.2f, \\sigma=%.2f',mean(
 
 
 
+%% Add stat
+
 
 %% BSGS
 % Multi-grid
@@ -152,6 +154,7 @@ end
 
 figure;
 caxis_limm = [min([X_true(:);Y{end}.m{end}(:)]) max([X_true(:);Y{end}.m{end}(:)])];
+
 subplot(kk,mm,1); hold on; 
 pcolor(grid_gen.x,grid_gen.y,X_true);
 plot(X.x,X.y,'or')
@@ -169,24 +172,25 @@ if isfield(parm, 'savefig') && parm.savefig
 end
 
 % Histogramm
-figure; nbins=20;
-subplot(2,1,1);hold on; title('Result')
-[f,x]=hist(X_true(:),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('True X | \\mu=%.2f, \\sigma=%.2f',mean(X_true(:)), std(X_true(:))));
-[f,x]=hist(X.d(:),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Sampled X | \\mu=%.2f, \\sigma=%.2f',mean(X.d(:)), std(X.d(:))));
-[f,x]=hist(Z.d(:),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Z | \\mu=%.2f, \\sigma=%.2f',mean(Z.d(:)), std(Z.d(:))));
-for i_sim=1:mm*kk-1
-    [f,x]=hist(Y{end}.m{i_sim}(:),nbins); stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation | \\mu=%.2f, \\sigma=%.2f',mean(Y{end}.m{i_sim}(:)), std(Y{end}.m{i_sim}(:))));
+bins=linspace(min(min([Y{end}.m{:}])), max(max([Y{end}.m{:}])), 25);
+ff=zeros(numel(bins),parm.n_realisation);
+for i_sim=1:parm.n_realisation
+    f=hist(Y{end}.m{i_sim}(:),bins); 
+    ff(:,i_sim) = f/trapz(bins,f);
 end
-legend(gca,'show')
+figure;  hold on; 
+plot(bins,mean(ff,2),'--k')
+plot(bins,max(ff,[],2),'k')
+plot(bins,min(ff,[],2),'k')
+h1=fill( [bins fliplr(bins)],  [max(ff,[],2)' fliplr(min(ff,[],2)')], [.4 .4 .4],'DisplayName','min and max range '); alpha(.25);
+% stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation %d | \\mu=%.2f, \\sigma=%.2f',i_sim,mean(Y{end}.m{i_sim}(:)), std(Y{end}.m{i_sim}(:))));
+f=hist(X_true(:),bins); h2=plot(bins,f/trapz(bins,f),'linewidth',2,'DisplayName',sprintf('True : \\mu=%.1f | \\sigma=%.1f',mean(X_true(:)), std(X_true(:))));
+[f,x]=hist(X.d(:),bins); h3=plot(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Sampled| \\mu=%.1f | \\sigma=%.1f',mean(X.d(:)), std(X.d(:))));
+f=hist(Z.d(:),bins); h4=plot(bins,f/trapz(bins,f),'linewidth',2,'DisplayName',sprintf('ERT | \\mu=%.1f | \\sigma=%.1f',mean(Z.d(:)), std(Z.d(:))));
 
-subplot(2,1,2);hold on;title('Normal Space')
-[f,x]=hist(Nscore.forward(X_true(:)),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('True X | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(X_true(:))), std(Nscore.forward(X_true(:)))));
-[f,x]=hist(Nscore.forward(X.d(:)),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Sampled X | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(X.d(:))), std(Nscore.forward(X.d(:)))));
-[f,x]=hist(Nscore.forward(Z.d(:)),nbins); stairs(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Z | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(Z.d(:))), std(Nscore.forward(Z.d(:)))));
-for i_sim=1:mm*kk-1
-    [f,x]=hist(Nscore.forward(Y{end}.m{i_sim}(:)),nbins); stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation | \\mu=%.2f, \\sigma=%.2f',mean(Nscore.forward(Y{end}.m{i_sim}(:))), std(Nscore.forward(Y{end}.m{i_sim}(:)))));
-end
-legend(gca,'show')
+legend([h2, h3 h4 h1]); axis tight
+ylabel('Histogram');xlabel('Electrical conductivity [mS/m]');
+
 
 if isfield(parm, 'savefig') && parm.savefig
     filename=['result/', parm.familyname, 'histo_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
@@ -195,83 +199,57 @@ end
 
 
 %% Variogram
-
-
 [gamma_x_s, gamma_y_s] = variogram_gridded_perso(sigma_true);
 for i_realisation=1:parm.n_realisation
     [gamma_x_y{i_realisation}, gamma_y_y{i_realisation}] = variogram_gridded_perso(Y{end}.m{i_realisation});
 end
 myfun = @(x,h) semivariogram1D(h,1,x,parm.k.model(1),0);
 
-figure; subplot(1,2,1);hold on
-id= grid{end}.x<parm.k.range(1);
-plot(grid_gen.x(grid_gen.x<parm.k.range(1)),gamma_x_s(grid_gen.x<parm.k.range(1)),'linewidth',2)
-plot(grid{end}.x(id),myfun(parm.k.range(1),grid{end}.x(id)),'linewidth',2)
+
+figure; % subplot(1,2,1);
+hold on
+id= grid_gen.x<parm.k.range(1)*1.2;
 for i_realisation=1:parm.n_realisation
-    plot(grid{end}.x(id),gamma_x_y{i_realisation}(id))
+    h1=plot(grid_gen.x(id),gamma_x_y{i_realisation}(id),'Color', [.4 .4 .4]);
 end
-legend('true conductivity','simulated conductivity','theorical equation')
-ylabel('Horizontal')
-xlabel('m')
+h3=plot(grid_gen.x(id),gamma_x_s(id),'k','linewidth',2);
+h2=plot(grid_gen.x(id),myfun(parm.k.range(1),grid_gen.x(id)),'--k','linewidth',3);
+legend([h2, h3, h1],'Theorical model C(h)','True','simulation(s)');
+ylabel('Horizontal'); xlabel('m');axis tight
 
-subplot(1,2,2);hold on
-myfun = @(x,h) semivariogram1D(h,1,x,parm.k.model(1),0);
-id= grid{end}.y<parm.k.range(2);
-plot(grid_gen.y(grid_gen.y<parm.k.range(2)),gamma_y_s(grid_gen.y<parm.k.range(2)),'linewidth',2)
-plot(grid{end}.y(id),myfun(parm.k.range(2),grid_gen.y(id)),'linewidth',2)
+% filename=['result/1-Generale/vario_h_', datestr(now,'yyyy-mm-dd_HH-MM-SS')];
+% savefig(filename);set(gcf, 'Color', 'w');
+% export_fig([filename '.eps'])
+
+% 
+figure;
+%subplot(1,2,2);
+hold on
+id= grid_gen.y<parm.k.range(2)*1.2;
+
 for i_realisation=1:parm.n_realisation
-    plot(grid{end}.y(id),gamma_y_y{i_realisation}(id))
+    h1=plot(grid_gen.y(id),gamma_y_y{i_realisation}(id),'Color', [.4 .4 .4]);
 end
-legend('True X','Theorical model','simulation(s)')
-ylabel('Vertical')
-xlabel('m')
+h3=plot(grid_gen.y(id),gamma_y_s(id),'k','linewidth',3);
+h2=plot(grid_gen.y(id),myfun(parm.k.range(2),grid_gen.y(id)),'--k','linewidth',3);
+legend([h2, h3, h1],'Theorical model C(h)','True','simulation(s)','Location','northwest')
+ylabel('Vertical'); xlabel('m'); axis tight
 
-%% Variogram  old
-nrbins = [10 100];
-subsample_var = [200 200];
-subsample_grid = [100 1000];
 
-[vario_true.x,vario_true.y] = variogram_gridded(sigma_true,grid_gen,parm.k.range,nrbins,subsample_var,subsample_grid);
-
-vario=cell(parm.n_realisation,1);
-for i_realisation=1:parm.n_realisation
-    [vario{i_realisation}.x,vario{i_realisation}.y] = variogram_gridded(Y{end}.m{i_realisation},grid{end},parm.k.range,nrbins,subsample_var,subsample_grid);
-end
-
-myfun = @(x,h) semivariogram1D(h,1,x,'sph',0);
-
-figure; subplot(1,2,1);hold on
-plot(vario_true.x.dist,vario_true.x.val,'linewidth',2)
-plot(vario_true.x.dist,myfun(parm.k.range(1),vario_true.x.dist),'linewidth',2)
-for i_realisation=1:parm.n_realisation
-    plot(vario{i_realisation}.x.dist,vario{i_realisation}.x.val)
-end
-
-legend('true conductivity','simulated conductivity','theorical equation')
-ylabel('Horizontal')
-xlabel('m')
-
-subplot(1,2,2);hold on
-plot(vario_true.y.dist,vario_true.y.val,'linewidth',2)
-plot(vario_true.y.dist,myfun(parm.k.range(2),vario_true.y.dist),'linewidth',2)
-for i_realisation=1:parm.n_realisation
-    plot(vario{i_realisation}.y.dist(~isnan(vario{i_realisation}.y.val)), vario{i_realisation}.y.val(~isnan(vario{i_realisation}.y.val)))
-end
-legend('True X','Theorical model','simulation(s)')
-ylabel('Vertical')
-xlabel('m')
-
-if isfield(parm, 'savefig') && parm.savefig
-    filename=['result/', parm.familyname, 'vario_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
-    savefig(filename)
-end
 
 %% Several field statistic
+YY=nan(parm.n_realisation,numel(Y{end}.m{1}));
+for i_realisation=1:parm.n_realisation
+    YY(i_realisation,:) = Y{end}.m{i_realisation}(:);
+end
+
+YY_mean=reshape(mean(YY),size(Y{end}.m{1},1),size(Y{end}.m{1},2));
+YY_std=reshape(std(YY),size(Y{end}.m{1},1),size(Y{end}.m{1},2));
 
 figure; hold on;
-subplot(3,1,1); imagesc(grid{end}.x,grid{end}.y,X_true); colorbar; title('true primary'); c_axis=caxis;
-subplot(3,1,2); imagesc(grid_s.x,grid_s.y,YY_mean); colorbar;title('Mean of realisations'); caxis(c_axis);
-subplot(3,1,3); imagesc(grid_s.x,grid_s.y,YY_std); colorbar; title('Std of realisations')
+subplot(3,1,1); imagesc(grid{end}.x,grid_gen.y,X_true); colorbar; title('true primary'); c_axis=caxis;
+subplot(3,1,2); imagesc(grid{end}.x,grid{end}.y,YY_mean); colorbar;title('Mean of realisations'); caxis(c_axis);
+subplot(3,1,3); imagesc(grid{end}.x,grid{end}.y,YY_std); colorbar; title('Std of realisations')
 
 
 

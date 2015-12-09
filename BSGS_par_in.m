@@ -148,6 +148,10 @@ for scale_i=1:parm.n_scale % for each scale
                 % then the point are coming from the hard data (X.d_ns) and the
                 % previously simulated point Y{scale_i}.m_ns.
                 Y{scale_i}.pt.m = k0.lambda'* [X.d_ns(k0.sb_mask) ; Y{scale_i}.m_ns{i_realisation}(k0.ss_mask)];
+                if isempty(Y{scale_i}.pt.m)
+                    warning('Empty estimate. replace by 0')
+                    Y{scale_i}.pt.m=0;
+                end
             else
                 XY_ns = [X.d_ns; Y{scale_i}.m_ns{i_realisation}(~isnan(Y{scale_i}.m_ns{i_realisation}))];
                 Y{scale_i}.pt.m = k0.lambda'* XY_ns(k0.mask);

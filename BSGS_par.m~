@@ -58,7 +58,7 @@
 %
 
 function [Y, t, kernel, k] = BSGS_par(X,Z,X_true,grid_gen,parm)
-t.tic.global = tic;
+t.global = tic;
 addpath(genpath('./.'))
 
 %% * *INPUT CEHCKING*
@@ -79,15 +79,18 @@ if ~isfield(parm, 'scale')
     parm.scale(1,parm.scale(1,:)>grid_gen.sx) = grid_gen.sx;
     parm.scale(2,parm.scale(2,:)>grid_gen.sy) = grid_gen.sy;
 end
-if ~isfield(parm, 'p_w'),
+if ~isfield(parm, 'p_w')
     parm.p_w     = repmat(0.5, 2, size(parm.scale,2)); 
 elseif size(parm.p_w,1)==1
     parm.p_w     = [parm.p_w ; 1-parm.p_w ];
 end
 if size(parm.p_w,2)==1
     parm.p_w     = repmat(parm.p_w, 1,size(parm.scale,2)); 
+elseif size(parm.p_w,2)==2
+    parm.p_w     = [linspace(parm.p_w(1,1), parm.p_w(1,2),size(parm.scale,2)); linspace(parm.p_w(2,1), parm.p_w(2,2),size(parm.scale,2))];
 end
-assert(size(parm.))
+assert(size(parm.p_w,1)==2 & size(parm.p_w,2)==size(parm.scale,2))
+
 % Run option
 if ~isfield(parm, 'neigh'),         parm.neigh          =1; end % smart-neighbouring activated or not
 if ~isfield(parm, 'nscore'),        parm.nscore         =1; end % use normal score (strongly advice to use it.)
@@ -193,7 +196,15 @@ end
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
 % The joint pdf of the primary and secondary is build using a bivariate 
 % kernel density estimator (Botev, Grotowski, & Kroese, 2010).
-kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
+if X.n~=0
+    kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
+else
+    warning('No hard data !')
+    assert(all(parm.p_w(1,:)==0),'The Secondary cannot be used !')
+    kernel.x=linspace(-5,5,100)';
+    kernel.y=kernel.x;
+    kernel.dens=ones(100,100);
+end
 
 
 %% * 3. *NORMAL SCORE TRANSFORM*
@@ -203,11 +214,11 @@ kernel = kernel_est(X, Z, parm.kernel_range, parm.plot.kernel);
 % transform of the prior normal distribution function is also created 
 % (return the pdf in the initial space from the mean and variance in the 
 % normal space)
-if parm.nscore
+if parm.nscore && X.n~=0
     Nscore = nscore_perso(X.d, 'linear', 'linear', kernel, parm.plot.ns);
 else
-    Nscore.forward = @(x) x;
-    Nscore.inverse = @(x) x;
+    Nscore.forward = @(x) x';
+    Nscore.inverse = @(x) x';
     Nscore.dist    = @(mu,sigma) normpdf(kernel.y,mu,sigma)/sum(normpdf(kernel.y,mu,sigma)); 
 end
 
@@ -246,7 +257,7 @@ if parm.par
     
     
 else
-    [Y,t]=BSGS_par_in(X, Z, kernel, Nscore, grid, parm);
+    [Y,t.scale]=BSGS_par_in(X, Z, kernel, k, Nscore, grid, parm);
 end
 
 
@@ -255,7 +266,7 @@ if parm.neigh; k.sb.mask = k.sb.mask_ini; end
 clear X_ini k.sb.mask_ini
 
 
-t.global = toc(t.tic.global);
+t.global = toc(t.global );
 
 
 %% * 5. *SAVE IT*

@@ -21,7 +21,7 @@
 % * *Date:* 19.10.2015
 
  % Add folder and sub-folder to path
-clc; % clear all;
+clc;  clear all;
 
 
 %% DATA CREATION
@@ -46,7 +46,7 @@ gen.method              = 'Normal-Random';% 'Normal-Random';% 'fromRho';
 % Generation parameter
 gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 4;          % number of well or number of point
-gen.covar.modele        = [4 100 10 0; 1 1 1 0]; % covariance structure
+gen.covar.modele        = [4 70 7 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
 gen.mu                  = 0; % parameter of the first field. 
 gen.std                 = 1;
@@ -63,7 +63,7 @@ gen.Rho.dmin.tolerance    = 1000;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'Random_10x1';
+gen.name                = 'Random_70x7';
 gen.seed                = 123456;
 
 % Run the function
@@ -75,11 +75,19 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
+load('data_gen/data/GEN-Random_70x7_2015-12-09_11-01');
+parm.gen=gen;
+
 parm.n_realisation  = 100;
 parm.par = 1;
 
+sigma.d=[];
+sigma.x=[];
+sigma.y=[];
+sigma.n=0;
+
 % parm.p_w = [0.5 0];
-parm.p_w=[1;1];
+parm.p_w=[0;1];
 parm.name           = 'Generale_real_pw11';
 %parm.plot.krig =1;
 % 
