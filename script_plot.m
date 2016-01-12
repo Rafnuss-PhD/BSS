@@ -101,21 +101,21 @@ xlabel('x[m]'); ylabel('y [m]');colorbar; set(gca,'Ydir','reverse'); caxis(caxis
 
 
 figure;
-subplot(4,1,1); 
-pcolor(grid_gen.x,grid_gen.y,Sigma.std); shading flat; 
-xlabel('x[m]'); ylabel('y [m]'); colorbar; set(gca,'Ydir','reverse');
-title('Electrical Conductivity Tomography error Rho_{std}'); 
-subplot(4,1,2); 
+subplot(3,1,1); 
+imagesc(grid_gen.x,grid_gen.y,sigma_true);hold on; plot(sigma.x, sigma.y, 'or'); 
+xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse'); caxis(caxis_lim);
+title('True Electrical Conductivity [mS/m] and well location');
+subplot(3,1,2); 
 imagesc(grid_gen.x,grid_gen.y,Sigma.d); 
 xlabel('x[m]'); ylabel('y [m]');  colorbar;set(gca,'Ydir','reverse'); caxis(caxis_lim);
-title('Electrical Conductivity Tomography G');
-subplot(4,1,3); 
-imagesc(grid_gen.x,grid_gen.y,sigma_true);
-xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse'); caxis(caxis_lim);
-title('True Electrical Conductivity rho_{true}');
-subplot(4,1,4); 
-imagesc(grid_gen.x,grid_gen.y,sigma_true-Sigma.d); 
-xlabel('x[m]'); ylabel('y [m]'); title('rho_{true}-G');colorbar;set(gca,'Ydir','reverse');
+title('Electrical Conductivity Tomography [mS/m]');
+subplot(3,1,3); 
+pcolor(grid_gen.x,grid_gen.y,Sigma.std); shading flat; 
+xlabel('x[m]'); ylabel('y [m]'); colorbar; set(gca,'Ydir','reverse');
+title('Electrical Conductivity Tomography standard deviation [mS/m]'); 
+% subplot(4,1,4); 
+% imagesc(grid_gen.x,grid_gen.y,sigma_true-Sigma.d); 
+% xlabel('x[m]'); ylabel('y [m]'); title('rho_{true}-G');colorbar;set(gca,'Ydir','reverse');
 
 % Histogram
 figure;

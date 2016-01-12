@@ -57,7 +57,7 @@
 % Referances:
 %
 
-function [Y, t, kernel, k] = BSGS_par(X,Z,X_true,grid_gen,parm)
+function [Y, t, kernel, k,filename] = BSGS_par(X,Z,X_true,grid_gen,parm)
 t.global = tic;
 addpath(genpath('./.'))
 
@@ -74,6 +74,11 @@ if ~isfield(parm, 'unit'),          parm.unit           = ''; end % unit of the 
 if ~isfield(parm, 'n_realisation'), parm.n_realisation  = 1; end
 if ~isfield(parm, 'par'),           parm.par            = 1; end
 if ~isfield(parm, 'par_n'),         parm.par_n          = feature('numcores'); end
+if ~isfield(parm, 'notify'),        
+    parm.notify          = 0;
+else
+    if ~isfield(parm, 'notify_email'), parm.notify_email  = 'rafnuss@gmail.com'; end
+end
 if ~isfield(parm, 'scale')
     parm.scale = repmat(1:max([grid_gen.sx,grid_gen.sy]),2,1); 
     parm.scale(1,parm.scale(1,:)>grid_gen.sx) = grid_gen.sx;
@@ -270,11 +275,15 @@ t.global = toc(t.global );
 
 
 %% * 5. *SAVE IT*
+filename=['result/', parm.familyname, 'SIM-', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.mat'];
 if parm.saveit
     mkdir(['result/', parm.familyname])
-    filename=['result/', parm.familyname, 'SIM-', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.mat'];
     save(filename, 'parm', 'Y', 'grid', 't', 'X', 'Z', 'X_true', 'k', 'kernel', 'Nscore')
 end
 
+if parm.notify
+    unix(['echo "Simulation ' parm.familyname ' has finish now (' datestr(now,'yyyy-mm-dd_HH-MM-SS') ') in ' num2str(t.global/60) 'min" | mail -s "Simulation Finish" ' parm.notify_email]);
+    load handel; sound(y,Fs)
+end
 
 end

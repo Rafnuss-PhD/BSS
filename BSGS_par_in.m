@@ -199,7 +199,7 @@ for scale_i=1:parm.n_scale % for each scale
             
             %%
             % * *PLOTIT*
-            if parm.plot.krig && i_realisation==1 && (i_plot==1)% || mod(i_plot+49,50)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
+            if scale_i==9 && parm.plot.krig && i_realisation==1 && (i_plot==1 || mod(i_plot+49,50)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
                 figure(1); clf
 
                 subplot(3,2,[1 4]);hold on

@@ -57,7 +57,7 @@
 % Referances:
 %
 
-function [Y, t, kernel, k] = BSGS(X,Z,X_true,grid_gen,parm)
+function [Y, t, kernel, k] = BSGS_do_not_use(X,Z,X_true,grid_gen,parm)
 t.tic.global = tic;
 addpath(genpath('./.'))
 
@@ -396,7 +396,7 @@ for scale_i=1:parm.n_scale % for each scale
             %%
             % * *POSTERIORI*
             % Multiply the (nomalized) prior and likelihood to get the (normalised) posteriori
-            Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.prior.^(1-parm.p_w(scale_i)).* Y{scale_i}.pt.likelihood.^(parm.p_w(scale_i));
+            Y{scale_i}.pt.post_pdf =  Y{scale_i}.pt.likelihood.^parm.p_w(1,scale_i) .* Y{scale_i}.pt.prior.^parm.p_w(2,scale_i);
             Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.post_pdf./sum(Y{scale_i}.pt.post_pdf);
 
             %%
@@ -417,7 +417,7 @@ for scale_i=1:parm.n_scale % for each scale
 
             %%
             % * *PLOTIT*
-            if parm.plot.krig && i_realisation==1 && (i_plot==1 || mod(i_plot+49,50)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
+            if scale_i==6 && parm.plot.krig && i_realisation==1 && (i_plot==1 || mod(i_plot+49,50)==0  || Nscore.forward(Y{scale_i}.pt.sampled)<-3  || Nscore.forward(Y{scale_i}.pt.sampled)>3 ) % 
                 figure(1); clf
 
                 subplot(3,2,[1 4]);hold on

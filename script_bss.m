@@ -22,7 +22,7 @@
 
  % Add folder and sub-folder to path
 clc;  clear all;
-
+addpath(genpath('./.'))
 
 %% DATA CREATION
 % This section gather all possible way to create the data. |gen| struct
@@ -38,7 +38,7 @@ gen.sx = 8;
 gen.sy = 8;
 
 % Generation Method.
-gen.method              = 'Normal-Random';% 'Normal-Random';% 'fromRho';   
+gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';   
 % 'Paolo':              load paolo initial model and fit it to the created grid
 % 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
 % 'fromRho':            idem
@@ -48,8 +48,8 @@ gen.samp                = 1;          % Method of sampling of K and g | 1: boreh
 gen.samp_n              = 4;          % number of well or number of point
 gen.covar.modele        = [4 70 7 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
-gen.mu                  = 0; % parameter of the first field. 
-gen.std                 = 1;
+gen.mu                  = 0.27; % parameter of the first field. 
+gen.std                 = .05;
 gen.Rho.method          = 'R2'; % 'Paolo' (default for gen.method Paolo), 'noise', 'RESINV3D'
 
 % Electrical inversion
@@ -75,20 +75,16 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
-load('data_gen/data/GEN-Random_70x7_2015-12-09_11-01');
+load('data_gen/data/GEN-SimilarToPaolo-sph-70_2015-11-20_16-16');
 parm.gen=gen;
 
-parm.n_realisation  = 100;
+parm.n_realisation  = 10;
 parm.par = 1;
 
-sigma.d=[];
-sigma.x=[];
-sigma.y=[];
-sigma.n=0;
-
 % parm.p_w = [0.5 0];
-parm.p_w=[0;1];
-parm.name           = 'Generale_real_pw11';
+parm.p_w=[1 .8 .5 .3 .1 0 0 0 0 0;
+    0 .2 .5 .7 .9 1 1 1 1 1];
+parm.name           = 'test_grad_def';
 %parm.plot.krig =1;
 % 
 % parm.fitvar         = 0;
@@ -114,9 +110,18 @@ parm.name           = 'Generale_real_pw11';
 % parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
 % parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
 
-BSGS_par(sigma,Sigma,sigma_true,grid_gen,parm);
+[Y, t, kernel, k,filename] = BSGS_par(sigma,Sigma,sigma_true,grid_gen,parm);
 
 
+
+
+
+
+
+%% Gradual Deformation
+
+clear all;
+load('result/SIM-test_grad_def_2016-01-08_12-19-57')
 
 
 
