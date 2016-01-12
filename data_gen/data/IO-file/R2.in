@@ -13,13 +13,13 @@ Inverse
 
 
 1    << num_regions    << elem_1, elem_2, value
-    1   7192  8.726129e+01
+    1   7192  1.554466e+02
 
 
 1  1    << patch_size_x, patch_size_y
 1    << inverse_type
 1  0    << data_type, reg_mode
-10  10  2  1    << tolerance, max_iterations, error_mod, alpha_aniso
+1000  10  2  1    << tolerance, max_iterations, error_mod, alpha_aniso
 0.000001  0.000001  0.000000  1000.000000   << a_wgt, b_wgt, rho_min, rho_max
 
 

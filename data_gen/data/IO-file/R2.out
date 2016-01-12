@@ -2,7 +2,7 @@
 
  >> R  2    R e s i s t i v i t y   I n v e r s i o n   v2.7a <<
 
- >> D a t e : 20 - 11 - 2015
+ >> D a t e : 12 - 01 - 2016
  >> Inverse                                                                         
  >> I n v e r s e   S o l u t i o n   S e l e c t e d <<
  >> R e g u l a r i s e d   T y p e <<
@@ -17,95 +17,11 @@
 
 
  Measurements read:  3649     Measurements rejected:     0
-   Geometric mean of apparent resistivities:  0.85441E+02
+   Geometric mean of apparent resistivities:  0.14997E+03
 
    Iteration   1
-     Initial RMS Misfit:     51704.78     Number of data ignored:     0
-     Alpha: **********   RMS Misfit:    11399.74
-     Alpha: **********   RMS Misfit:     8146.97
-     Alpha: **********   RMS Misfit:     5721.83
-     Alpha: **********   RMS Misfit:     4140.44
-     Alpha: **********   RMS Misfit:     3147.32
-     Alpha: **********   RMS Misfit:     2483.12
-     Alpha: **********   RMS Misfit:     2027.76
-     Alpha: **********   RMS Misfit:     1761.02
-     Alpha: **********   RMS Misfit:     1631.36
-     Alpha: **********   RMS Misfit:     1596.27
-     Step length set to   1.00000
-     Final RMS Misfit:     1596.27
-     Updated data weights
-
-   Iteration   2
-     Initial RMS Misfit:      1054.63     Number of data ignored:     0
-     Alpha: **********   RMS Misfit:      376.97
-     Alpha: **********   RMS Misfit:      253.77
-     Alpha: **********   RMS Misfit:      176.45
-     Alpha: **********   RMS Misfit:      126.11
-     Alpha: **********   RMS Misfit:      103.30
-     Alpha: **********   RMS Misfit:      102.81
-     Alpha: 702703.700   RMS Misfit:      112.00
-     Step length set to   1.00000
-     Final RMS Misfit:      102.81
-     Updated data weights
-
-   Iteration   3
-     Initial RMS Misfit:        68.79     Number of data ignored:     0
-     WARNING: managed to achieve CG tolerance of:  0.795E-03
-     Alpha: 930922.051   RMS Misfit:       47.75
-     WARNING: managed to achieve CG tolerance of:  0.615E-03
-     Alpha: 432095.740   RMS Misfit:       33.76
-     WARNING: managed to achieve CG tolerance of:  0.742E-03
-     Alpha: 200561.076   RMS Misfit:       26.08
-     WARNING: managed to achieve CG tolerance of:  0.834E-03
-     Alpha:  93092.205   RMS Misfit:       26.60
-     Step length set to   1.00000
-     Final RMS Misfit:       26.08
-     Updated data weights
-
-   Iteration   4
-     Initial RMS Misfit:        20.16     Number of data ignored:     0
-     WARNING: managed to achieve CG tolerance of:  0.192E-02
-     Alpha: 116143.664   RMS Misfit:       17.99
-     WARNING: managed to achieve CG tolerance of:  0.100E-02
-     Alpha:  53909.114   RMS Misfit:       12.95
-     WARNING: managed to achieve CG tolerance of:  0.288E-02
-     Alpha:  25022.394   RMS Misfit:       10.78
-     WARNING: managed to achieve CG tolerance of:  0.560E-02
-     Alpha:  11614.366   RMS Misfit:       14.28
-     Step length set to   1.00000
-     Final RMS Misfit:       10.78
-     Attempted to update data weights and caused overshoot
-     treating as converged
-
- Solution converged - Outputing results to file
-
- Calculating sensitivity map
-
-
- Processing dataset   2
-
-
- End of data:  Terminating
-
-
-                     Timing Summary
-                     ==============
-     Total time taken:                              1374. s
-     Percent time taken forming element equations:    0.3 %
-     Percent time taken solving forward  equations:   1.2 %
-     Percent time taken forming Jacobian:             0.3 %
-     Percent time taken solving inverse equations:   95.3 %
-     Percent time taken calculating res. matrix:      0.0 %
-
-                     Timing Details
-                     ==============
-     Number of calls to form element equations:       406
-     Average time taken in call:                      0.0 s
-     Number of calls to solve forward equations:    41006
-     Average time taken in call:                      0.0 s
-     Number of calls to form Jacobian:                  4
-     Average time taken in call:                      0.9 s
-     Number of calls to solve inverse equations:       25
-     Average time taken in call:                     52.3 s
-     Number of calls to calculate res. matrix:          0
-     Average time taken in call:                      0.0 s
+     Initial RMS Misfit:     52094.80     Number of data ignored:     0
+     Alpha: **********   RMS Misfit:    15073.35
+     Alpha: **********   RMS Misfit:    11438.79
+     Alpha: **********   RMS Misfit:     8776.98
+     Alpha: **********   RMS Misfit:     6931.38

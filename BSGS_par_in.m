@@ -119,6 +119,8 @@ for scale_i=1:parm.n_scale % for each scale
             Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
             Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
             Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
+           
+            
         end
         
         
@@ -135,12 +137,13 @@ for scale_i=1:parm.n_scale % for each scale
                 Y{scale_i}.pt.s = k0.s;
                 
                 % * *LIKELIHOOD*
-                % We first find the secondary value (and error) (Z.d, Z.std) to
-                % create a pdf. This pdf is then multiply inside the kernel to get
+                % We first find the secondary value (and error) (Z.d, Z.std) to create a pdf. This pdf is then multiply inside the kernel to get
                 % the density. The likelihood is only...
                 Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
                 Y{scale_i}.pt.dens = bsxfun(@times, kernel.dens, Z.pt.dist./sum(Z.pt.dist));
                 Y{scale_i}.pt.likelihood = sum(Y{scale_i}.pt.dens, 2)/sum(Y{scale_i}.pt.dens(:));
+                Z.pt.dist = normpdf(kernel.x, Z.d(Z.y==,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x))  , Z.std(Z.y==Y{scale_i}.Y(Y{scale_i}.pt.y,Y{scale_i}.pt.x), Z.x==Y{scale_i}.X(Y{scale_i}.pt.y,Y{scale_i}.pt.x)));
+                
             end
             
             if parm.neigh % if option smart neihbour is selected
@@ -178,7 +181,7 @@ for scale_i=1:parm.n_scale % for each scale
             %%
             % * *POSTERIORI*
             % Multiply the (nomalized) prior and likelihood to get the (normalised) posteriori
-            Y{scale_i}.pt.post_pdf =  Y{scale_i}.pt.likelihood.^parm.p_w(1,scale_i) .* Y{scale_i}.pt.prior.^parm.p_w(2,scale_i);
+            Y{scale_i}.pt.post_pdf =  Y{scale_i}.pt.likelihood.^parm.w_X(scale_i) .* Y{scale_i}.pt.prior.^parm.p_w(2,scale_i);
             Y{scale_i}.pt.post_pdf = Y{scale_i}.pt.post_pdf./sum(Y{scale_i}.pt.post_pdf);
             
             %%

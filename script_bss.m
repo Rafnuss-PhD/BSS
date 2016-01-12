@@ -34,8 +34,8 @@ gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
 % grid size is $(2^gen.scale.x(i)+1) \times (2^gen.scale.y(i)+1)$ 
-gen.sx = 8;
-gen.sy = 8;
+gen.sx = 10;
+gen.sy = 6;
 
 % Generation Method.
 gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';   
@@ -46,7 +46,7 @@ gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';
 % Generation parameter
 gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 4;          % number of well or number of point
-gen.covar.modele        = [4 70 7 0; 1 1 1 0]; % covariance structure
+gen.covar.modele        = [4 27 2.7 0; 1 1 1 0]; % covariance structure
 gen.covar.c             = [0.99; 0.01]; 
 gen.mu                  = 0.27; % parameter of the first field. 
 gen.std                 = .05;
@@ -63,7 +63,7 @@ gen.Rho.dmin.tolerance    = 1000;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'Random_70x7';
+gen.name                = 'SimilarToPaolo-new';
 gen.seed                = 123456;
 
 % Run the function
@@ -78,12 +78,12 @@ data_generation(gen);
 load('data_gen/data/GEN-SimilarToPaolo-sph-70_2015-11-20_16-16');
 parm.gen=gen;
 
-parm.n_realisation  = 10;
-parm.par = 1;
+parm.n_realisation  = 1;
+parm.par = 0;
 
 % parm.p_w = [0.5 0];
-parm.p_w=[1 .8 .5 .3 .1 0 0 0 0 0;
-    0 .2 .5 .7 .9 1 1 1 1 1];
+parm.w_X = @(scale,depth) 1;
+parm.w_Z = @(scale,depth) 0;
 parm.name           = 'test_grad_def';
 %parm.plot.krig =1;
 % 

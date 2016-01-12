@@ -177,6 +177,7 @@ switch gen.Rho.method
         f                   = griddedInterpolant({grid_Rho.y,grid_Rho.x},Rho.d_raw,'nearest','nearest');
         Rho.d               = f({grid.y,grid.x});
         Sigma.d             = 1000./Rho.d;
+        Sigma.d_raw         = 1000./Rho.d_raw;
         
         if dmin.res_matrix ==  1 && any(~isnan(gen.Rho.i.output.sen(:)))
             Rho.sen_raw         = flipud(gen.Rho.i.output.sen);
@@ -200,6 +201,9 @@ end
 
 Sigma.x_raw = grid_Rho.x;
 Sigma.y_raw = grid_Rho.y;
+Sigma.dx_raw = [diff(Sigma.x_raw(1:2)) diff(Sigma.x_raw(1:end-1)+.5*diff(Sigma.x_raw)) diff(Sigma.x_raw(end-1:end))];
+Sigma.dy_raw = [diff(Sigma.y_raw(1:2)) diff(Sigma.y_raw(1:end-1)+.5*diff(Sigma.y_raw)) diff(Sigma.y_raw(end-1:end))];
+
 
 % grid_Rho.x = Sigma.x_raw;
 % grid_Rho.y = Sigma.y_raw;
