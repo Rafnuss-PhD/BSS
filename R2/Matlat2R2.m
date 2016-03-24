@@ -36,7 +36,7 @@ switch d.mesh_type
     case 3 % Trigular Mesh
         d.scale         = NaN;                          % scaling factor for the mesh co-ordinates.
     case 4
-        n_plus          = 16;                           % number of buffer cells
+        n_plus          = 6;                           % number of buffer cells
         x_plus          = logspace(log10(x(end)-x(end-1)), log10(4*(x(end)-x(1))), n_plus); % generate n_plus value logspaced between the dx and 3 times the range of x value
         y_plus          = logspace(log10(y(end)-y(end-1)), log10(20*(y(end)-y(1))), n_plus);
         d.xx            = sort([x(1)-x_plus x x(end)+x_plus]);             % array containing x coordinates of each of numnp_x node columns
