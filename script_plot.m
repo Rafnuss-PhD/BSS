@@ -152,6 +152,14 @@ if sub_n<4, kk=sub_n;mm=1;
 else kk=ceil(sub_n/2); mm=2; 
 end
 
+X_true = Prim_true;
+Y= Res;
+X =Prim;
+kernel = kern;
+kernel.y =kern.axis_prim;
+kernel.x =kern.axis_sec;
+
+
 figure;
 caxis_limm = [min([X_true(:);Y{end}.m{end}(:)]) max([X_true(:);Y{end}.m{end}(:)])];
 

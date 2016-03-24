@@ -1,14 +1,12 @@
 %% SCRIPT_BSS.m
 % This file contain the script which can run the entire algorithm. It is
 % where the main options/parameters are set and the main fonctions are
-% lauch. Refere to the manual for more information of the Algorithm
+% lauch.
 %
 % # DATA CREATION : Data are created either by reading mat file or
-% generated with physical relationship. see description below
-% # FIRST STEP : First Baysian Sequential Simulation on rho and Rho
-% # SECOND STEP : Second Baysian Sequential Simulation on gG and K
-% # FLOW : Measure the flow in the field.
-% # PLOTTHEM : Graphical visualisation of data
+% generated with physical relationship. 
+% # BSS : Baysian Sequential Simulation
+% # PLOT : Graphical visualisation of data
 %
 %
 % Variable naming convension:
@@ -18,11 +16,11 @@
 % * K       : Hydraulic conductivity [m/s]
 %
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
-% * *Date:* 19.10.2015
 
- % Add folder and sub-folder to path
-clc;  clear all;
-addpath(genpath('./.'))
+
+clc; % clear the command line
+addpath(genpath('./.'));  % Add folder and sub-folder to path
+dbstop if error  % activate debug in error
 
 %% DATA CREATION
 % This section gather all possible way to create the data. |gen| struct
@@ -33,15 +31,16 @@ gen.xmax = 240; %total length in unit [m]
 gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
-% grid size is $(2^gen.scale.x(i)+1) \times (2^gen.scale.y(i)+1)$ 
-gen.sx = 10;
-gen.sy = 6;
+% grid size is $(2^gen.sx+1) \times (2^gen.sy+1)$ 
+gen.sx = 8;
+gen.sy = 5;
 
-% Generation Method.
-gen.method              = 'fromRho';% 'Normal-Random';% 'fromRho';   
-% 'Paolo':              load paolo initial model and fit it to the created grid
-% 'fromK':              genreate with FFTMA a field and log transform it with the parameter defined below 
-% 'fromRho':            idem
+% Generation Method: All method generate with FFTMA a gaussian field.
+% 'Normal'              with normal distribution \sim N(gen.mu,gen.std)
+% 'LogNormal'   
+% 'fromRho':            log transform it with the parameter defined below 
+% 'fromK':              generate with FFTMA a field of Hyraulic conductivity and log transform it with the parameter defined below 
+gen.method              = 'fromRho';
 
 % Generation parameter
 gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
@@ -58,7 +57,7 @@ gen.Rho.grid.ny           = 15; % log-spaced grid.
 gen.Rho.elec.spacing      = 2; % in grid spacing unit.
 gen.Rho.elec.config_max   = 6000; % number of configuration of electrode maximal 
 gen.Rho.dmin.res_matrix   = 1; % resolution matrix: 1-'sensitivity' matrix, 2-true resolution matrix or 0-none
-gen.Rho.dmin.tolerance    = 1000;
+gen.Rho.dmin.tolerance    = 10;
 
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
@@ -75,16 +74,19 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
-load('data_gen/data/GEN-SimilarToPaolo-sph-70_2015-11-20_16-16');
+load('data_gen/data/GEN-SimilarToPaolo-new_2016-03-04_11-25');
 parm.gen=gen;
 
 parm.n_realisation  = 1;
 parm.par = 0;
 
-% parm.p_w = [0.5 0];
+% parm.p_w = [0.5 0];   
 parm.w_X = @(scale,depth) 1;
-parm.w_Z = @(scale,depth) 0;
+parm.w_Z = @(scale,depth) 1;
 parm.name           = 'test_grad_def';
+parm.scale = [6;5]
+parm.k.nb_neigh = [0 0 0 0 0; 4 4 4 4 4];
+parm.k.model    = [ 4 40 4 0; 1 1 1 0]; 
 %parm.plot.krig =1;
 % 
 % parm.fitvar         = 0;
@@ -105,7 +107,7 @@ parm.name           = 'test_grad_def';
 % parm.plot.sb        = 0;
 % parm.plot.kernel    = 0;
 % parm.plot.fitvar    = 0;
-% parm.plot.krig      = 0;
+parm.plot.krig      = 1;
 % 
 % parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
 % parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
@@ -115,13 +117,7 @@ parm.name           = 'test_grad_def';
 
 
 
-
-
-
-%% Gradual Deformation
-
-clear all;
-load('result/SIM-test_grad_def_2016-01-08_12-19-57')
+%% Plot
 
 
 
