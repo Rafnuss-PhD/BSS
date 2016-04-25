@@ -13,8 +13,9 @@ function pt_krig=kriging(pt,Res,Prim,krig,parm,i_realisation)
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
 % * *Date:* 02.02.2015
 
+%% *SELECTION OF NEIGHBOURING POINT*
 if parm.neigh
-   %% *SELECTION OF DATA*
+   
     % Use Supergrid Block for hard data and spiral search for previously
     % simulated point.
     
@@ -70,8 +71,8 @@ else
     [dist_s, idx] = sort(dist);
     sb_i=1;
     pt_krig.mask=[];
-    sel_g=[];
-    while sb_i<sum(krig.nb_neigh(2,:)) && dist_s(sb_i) < krig.wradius
+    sel_g=zeros(0,2);
+    while sb_i<sum(krig.nb_neigh(2,:)) && numel(dist_s)>=sb_i && dist_s(sb_i) < krig.wradius
         pt_krig.mask=[pt_krig.mask; idx(sb_i)];
         sel_g = [sel_g; sel_g_ini(idx(sb_i),:)];
         sb_i=sb_i+1;
