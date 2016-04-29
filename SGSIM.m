@@ -304,8 +304,8 @@ if parm.varcovar % compute the empirical var-covariance matrix (Emery & Pelaez, 
     end
     
     Prim.varcovar_safe= Prim.varcovar;
-    varcovar.lambda0 = sparse(grid{parm.n_scale}.nxy, sum(Prim.varcovar==0)); % for point not on the grid
-    varcovar.lambda = sparse(grid{parm.n_scale}.nxy,grid{parm.n_scale}.nxy);
+    Res{1}.lambda0 = sparse(grid{parm.n_scale}.nxy, sum(Prim.varcovar==0)); % for point not on the grid
+    Res{1}.lambda = sparse(grid{parm.n_scale}.nxy,grid{parm.n_scale}.nxy);
     
 end
 
@@ -321,6 +321,7 @@ for i_scale=1:parm.n_scale % for each scale
     Res{i_scale}.Y=grid{i_scale}.Y;
     Res{i_scale}.nx=grid{i_scale}.nx;
     Res{i_scale}.ny=grid{i_scale}.ny;
+    Res{i_scale}.nxy=grid{i_scale}.ny*Res{i_scale}.nx;
     Res{i_scale}.m=repmat({nan(grid{i_scale}.ny,grid{i_scale}.nx)},parm.n_realisation,1); % matrix des resutlats
     
     % Populate the grid from previous scale.
@@ -354,7 +355,7 @@ for i_scale=1:parm.n_scale % for each scale
         Res{i_scale}.m_ns{i_realisation}(I) = Nscore.forward(Res{i_scale}.m{i_realisation}(I));
     end
     
-    % compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
+
     if parm.varcovar
         Res{i_scale}.varcovar_id=reshape( find(ismember(grid{parm.n_scale}.X, Res{i_scale}.x) &  ismember(grid{parm.n_scale}.Y, Res{i_scale}.y)), Res{i_scale}.ny, Res{i_scale}.nx);
     end
@@ -444,12 +445,12 @@ for i_scale=1:parm.n_scale % for each scale
               
         end
         Res{i_scale}.sim.xy_r=Res{i_scale}.sim.xy(Res{i_scale}.path); % randomly permutate the ordered vector of index of Y.xy
-        [Res{i_scale}.sim.x_r,Res{i_scale}.sim.y_r] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
+        [Res{i_scale}.sim.y_r,Res{i_scale}.sim.x_r] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
         
     else
         for i_realisation=1:parm.n_realisation
             Res{i_scale}.sim.xy_r{i_realisation}=Res{i_scale}.sim.xy(randperm(Res{i_scale}.sim.n)); % randomly permutate the ordered vector of index of Y.xy
-            [Res{i_scale}.sim.x_r{i_realisation}, Res{i_scale}.sim.y_r{i_realisation}] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r{i_realisation}); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
+            [Res{i_scale}.sim.y_r{i_realisation}, Res{i_scale}.sim.x_r{i_realisation}] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r{i_realisation}); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
         end
     end
     
@@ -464,12 +465,17 @@ for i_scale=1:parm.n_scale % for each scale
     i_plot=0; % used for computing the number of point simulated. Used for ploting
     for i_pt=1:Res{i_scale}.sim.n; % loop over each point
         i_plot=i_plot+1;
+        
+%         if i_pt==492
+%             deo
+%         end
+            
         if parm.cstk % if option constant weight is activate.
             % Find the current point position on the grid{i_scale}. It
             % will be used on each realisation.
             t.tic.cstk = tic;
-            pt.y = Res{i_scale}.sim.x_r(i_pt);
-            pt.x = Res{i_scale}.sim.y_r(i_pt);
+            pt.x = Res{i_scale}.sim.x_r(i_pt);
+            pt.y = Res{i_scale}.sim.y_r(i_pt);
             
             % Kriging system
             pt.krig = kriging(pt,Res{i_scale},Prim,krig,parm,1);
@@ -482,8 +488,8 @@ for i_scale=1:parm.n_scale % for each scale
             if ~parm.cstk
                 % Find the current point position on the grid{i_scale}.
                 % This is changing for each realisation
-                pt.y = Res{i_scale}.sim.x_r{i_realisation}(i_pt);
-                pt.x = Res{i_scale}.sim.y_r{i_realisation}(i_pt);
+                pt.x = Res{i_scale}.sim.x_r{i_realisation}(i_pt);
+                pt.y = Res{i_scale}.sim.y_r{i_realisation}(i_pt);
                 
                 % Kriging
                 pt.krig = kriging(pt,Res{i_scale},Prim,krig,parm,i_realisation);
@@ -517,38 +523,40 @@ for i_scale=1:parm.n_scale % for each scale
             % Sample a point in the posteri distribution. To do so the CDF
             % is created and interpolation tool is used to assure
             % randomized sampling.
-            pt.aggr.cdf = cumsum(pt.krig.pdf);
+            pt.krig.cdf = cumsum(pt.krig.pdf);
             
             % Interpolation only works if it is mono.. increasing. But the
             % cdf can reach 1 so we just add eps (very small value).
-            if ~all(diff(pt.aggr.cdf)>0)
-                pt.aggr.cdf = pt.aggr.cdf +  linspace(0,numel(pt.aggr.cdf)*eps*2,numel(pt.aggr.cdf))';
-                assert(all(diff(pt.aggr.cdf)>0))
+            if ~all(diff(pt.krig.cdf)>0)
+                pt.krig.cdf = pt.krig.cdf +  linspace(0,numel(pt.krig.cdf)*eps*2,numel(pt.krig.cdf))';
+                assert(all(diff(pt.krig.cdf)>0))
             end
             
-            pt.sampled = interp1(pt.aggr.cdf, parm.support_dist, U(i_pt,i_realisation),'pchip');
+            pt.sampled = interp1(pt.krig.cdf, parm.support_dist, U(i_pt,i_realisation),'pchip');
             
             
             %% * 3.4 *PLOTIT*
-            if parm.plot.krig && i_realisation==1 && (i_plot==1 || mod(i_plot+49,50)==0  || Nscore.forward(pt.sampled)<-3  || Nscore.forward(pt.sampled)>3 ) %
+            if parm.plot.krig && i_realisation==1 && (i_plot==1261   || Nscore.forward(pt.sampled)<-3  || Nscore.forward(pt.sampled)>3 ) %|| mod(i_plot,50)==0
                 figure(1); clf
                 
                 subplot(3,2,[1 4]);
                 hold on
                 h1=imagesc(Res{i_scale}.x,Res{i_scale}.y,Res{i_scale}.m_ns{1},'AlphaData',~isnan(Res{i_scale}.m_ns{1}));
                 
-                sb_i = min([round((Res{i_scale}.y(pt.y)-krig.sb.y(1))/krig.sb.dy +1)'; krig.sb.ny]);
-                sb_j = min([round((Res{i_scale}.x(pt.x) -krig.sb.x(1))/krig.sb.dx +1)'; krig.sb.nx]);
-                windows=nan(krig.sb.ny,krig.sb.nx);
-                for u=1:length(krig.el_X_s) %.. look at all point...
-                    for q=1:4 %... and assign it to the corresponding quadrant
-                        if sb_i+krig.qs(q,1)*krig.el_X_s(u)<=krig.sb.nx && sb_j+krig.qs(q,2)*krig.el_Y_s(u)<=krig.sb.ny && sb_i+krig.qs(q,1)*krig.el_X_s(u)>=1 && sb_j+krig.qs(q,2)*krig.el_Y_s(u)>=1% check to be inside the grid
-                            windows(sb_i+krig.qs(q,1)*krig.el_X_s(u), sb_j+krig.qs(q,2)*krig.el_Y_s(u))=1;
+                if parm.neigh
+                    sb_i = min([round((Res{i_scale}.y(pt.y)-krig.sb.y(1))/krig.sb.dy +1)'; krig.sb.ny]);
+                    sb_j = min([round((Res{i_scale}.x(pt.x) -krig.sb.x(1))/krig.sb.dx +1)'; krig.sb.nx]);
+                    windows=nan(krig.sb.ny,krig.sb.nx);
+                    for u=1:length(krig.el_X_s) %.. look at all point...
+                        for q=1:4 %... and assign it to the corresponding quadrant
+                            if sb_i+krig.qs(q,1)*krig.el_X_s(u)<=krig.sb.nx && sb_j+krig.qs(q,2)*krig.el_Y_s(u)<=krig.sb.ny && sb_i+krig.qs(q,1)*krig.el_X_s(u)>=1 && sb_j+krig.qs(q,2)*krig.el_Y_s(u)>=1% check to be inside the grid
+                                windows(sb_i+krig.qs(q,1)*krig.el_X_s(u), sb_j+krig.qs(q,2)*krig.el_Y_s(u))=1;
+                            end
                         end
                     end
+                    h2=imagesc(krig.sb.x,krig.sb.y,windows,'AlphaData',windows*.5);
+                    h3=mesh([0 krig.sb.x+krig.sb.dx/2],[0 krig.sb.y+krig.sb.dy/2],zeros(krig.sb.ny+1, krig.sb.nx+1),'EdgeColor','k','facecolor','none');
                 end
-                h2=imagesc(krig.sb.x,krig.sb.y,windows,'AlphaData',windows*.5);
-                h3=mesh([0 krig.sb.x+krig.sb.dx/2],[0 krig.sb.y+krig.sb.dy/2],zeros(krig.sb.ny+1, krig.sb.nx+1),'EdgeColor','k','facecolor','none');
                 
                 tt=-pi:0.01:pi;
                 x=Res{i_scale}.x(pt.x)+krig.range(1)*cos(tt);
@@ -563,7 +571,7 @@ for i_scale=1:parm.n_scale % for each scale
                 
                 h8=scatter(Prim.x,Prim.y,[],Prim.d_ns,'s','filled');
                 
-                if parm.cstk
+                if parm.neigh
                     n_hd = numel(Prim.x(pt.krig.sb_mask));
                     sel_g=[Prim.x(pt.krig.sb_mask) Prim.y(pt.krig.sb_mask); Res{i_scale}.X(pt.krig.ss_mask) Res{i_scale}.Y(pt.krig.ss_mask)];
                     XY_ns = [Prim.d_ns(pt.krig.sb_mask) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.ss_mask)];
@@ -588,15 +596,14 @@ for i_scale=1:parm.n_scale % for each scale
                 
                 subplot(3,2,5); hold on;
                 plot( parm.support_dist,pt.krig.pdf)
-                plot( parm.support_dist,pt.aggr.pdf)
-                plot(  parm.support_dist, max(pt.aggr.pdf)*pt.aggr.cdf)
-                plot([pt.sampled pt.sampled],[0 max(pt.aggr.pdf)],'k')
-                legend(['Kriging, w=' num2str(parm.w_krig(i_scale))], ['Secondary, w=' num2str(parm.w_sec(i_scale))],'Aggregated','Aggreag. cdf','sampled location')
+                plot(  parm.support_dist, max(pt.krig.pdf)*pt.krig.cdf)
+                plot([pt.sampled pt.sampled],[0 max(pt.krig.pdf)],'k')
+                legend('Kiriging estimate','CDF','sampled')
                 
                 
                 subplot(3,2,6); hold on;
-                %[f,x]=hist(X_ini.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
-                [f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
+                %[f,x]=hist(Prim_ini.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
+                %[f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
                 [f,x]=hist(R{i_scale}.m{i_realisation}(:),50); plot(x,f/trapz(x,f));
                 legend('Well sampling', 'ERT','Simulation')
                 
@@ -604,28 +611,29 @@ for i_scale=1:parm.n_scale % for each scale
                 keyboard
             end
             
-            %% 3.5 *Back transform*
-            Res{i_scale}.m{i_realisation}(pt.y,pt.x) = pt.sampled;
-            Res{i_scale}.m_ns{i_realisation}(pt.y,pt.x) = Nscore.forward(pt.sampled); % add only the last simulated point to normal score
-            
-        end
-        
-        %% Compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
-        if parm.varcovar
-            pt_id = find(Res{i_scale}.y(pt.y)==grid{parm.n_scale}.Y&Res{i_scale}.x(pt.x)==grid{parm.n_scale}.X);
-            
-            if parm.neigh % if option smart neihbour is selected
-                varcovar.lambda(pt_id, [Prim.varcovar(pt.krig.sb_mask); Res{i_scale}.varcovar_id(pt.krig.ss_mask)]) = -pt.krig.lambda./sqrt(pt.krig.s);
-                varcovar.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
-            else % compute only the last realization
-                XY_id = [Prim.varcovar; Res{i_scale}.varcovar_id(~isnan(Res{i_scale}.m_ns{i_realisation}))];
-                varcovar.lambda(pt_id,XY_id(pt.krig.mask)) = -pt.krig.lambda./sqrt(pt.krig.s);
-                varcovar.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
-                clear XY_id
+                    
+            %% 3.5 Compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
+            if parm.varcovar && i_realisation==1
+                pt_id = find(Res{i_scale}.y(pt.y)==grid{parm.n_scale}.Y&Res{i_scale}.x(pt.x)==grid{parm.n_scale}.X);
+                
+                if parm.neigh % if option smart neihbour is selected
+                    Res{end}.lambda(pt_id, [Prim.varcovar(pt.krig.sb_mask); Res{i_scale}.varcovar_id(pt.krig.ss_mask)]) = -pt.krig.lambda./sqrt(pt.krig.s);
+                    Res{end}.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
+                else % compute only the last realization
+                    XY_id = [Prim.varcovar; Res{i_scale}.varcovar_id(~isnan(Res{i_scale}.m{i_realisation}))];
+                    Res{end}.lambda(pt_id,XY_id(pt.krig.mask)) = -pt.krig.lambda./sqrt(pt.krig.s);
+                    Res{end}.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
+                    clear XY_id
+                end
+                clear pt_id
             end
             
-            
+            %% 3.6 *Back transform*
+            Res{i_scale}.m{i_realisation}(pt.y,pt.x) = pt.sampled;
+            Res{i_scale}.m_ns{i_realisation}(pt.y,pt.x) = Nscore.forward(pt.sampled); % add only the last simulated point to normal score
         end
+        % NOTHING SHOULD BE DONE AFTER THAT WHICH INVOLVED THE WEIGHT
+        % BECAUSE WE CHANGED RES.M...
     end
     
     % display info
@@ -633,21 +641,6 @@ for i_scale=1:parm.n_scale % for each scale
     t_scale(i_scale) = toc(t.tic.scale);
     
 
-end
-
-if parm.varcovar;
-    id=[];
-    for i_scale=1:parm.n_scale
-        id = [id; Res{i_scale}.varcovar_id(Res{i_scale}.sim.xy_r)'];
-    end
-    Res{end}.varcovar.lambda=varcovar.lambda;
-    Res{end}.varcovar.lambda_ord=varcovar.lambda(id,id);
-    Res{end}.varcovar.CY =  (Res{end}.varcovar.lambda) \ transpose(inv(Res{end}.varcovar.lambda));
-
-    
-    Res{end}.varcovar.dist = sqrt(bsxfun(@minus,Res{end}.X(:),Res{end}.X(:)').^2 + bsxfun(@minus,Res{end}.Y(:),Res{end}.Y(:)').^2);
-    
-    clear id
 end
 
 end
