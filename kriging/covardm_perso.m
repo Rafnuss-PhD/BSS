@@ -56,7 +56,7 @@ for i=1:numel(c)
     elseif all(size(x)==size(x0)) && all(x(:)==x0(:))
         h=squareform(pdist(x*cx{i}));
     else
-        error('should be here...')
+        warning('should be here...')
         h=pdist2(x*cx{i}, x0*cx{i});
     end
     

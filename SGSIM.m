@@ -86,7 +86,8 @@ if ~isfield(parm, 'notify'),
 else
     if ~isfield(parm, 'notify_email'), parm.notify_email  = 'rafnuss@gmail.com'; end
 end
-if ~isfield(parm, 'path'),         parm.path            = 'random'; end
+if ~isfield(parm, 'path'),         parm.path            = 'linear'; end
+if ~isfield(parm, 'path_random'),         parm.path_random     = false; end
 if ~isfield(parm, 'varcovar'),         parm.path            = 0; end
 % Scale and weight parameters
 if ~isfield(parm, 'scale')
@@ -294,19 +295,23 @@ t_scale = zeros(parm.n_scale,1);
 t_cstk = zeros(parm.n_scale,1);
 
 if parm.varcovar % compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
-    Prim.varcovar=zeros(Prim.n,1);
+    % We store the lambda matrix in Res{end}, even for conditional simulation
+    % we still store them all together on the same lambda (no lambda0). 
+    Res{end}.lambda = sparse(grid{parm.n_scale}.nxy,grid{parm.n_scale}.nxy);
     
-    % Assign to each hard data the index of the final grid
+    % But this require then to have all conditioning point in the finale grid!!
+    assert(all(ismember(Prim.x,grid{parm.n_scale}.x) & ismember(Prim.y,grid{parm.n_scale}.y)), 'All conditioning data need to be on the last grid')
+    
+    % Assign to each hard data its index on the final grid
+    Prim.varcovar=zeros(Prim.n,1);
     for i_hard_data=1:Prim.n
         if ismember(Prim.y(i_hard_data),grid{parm.n_scale}.y) && ismember(Prim.x(i_hard_data),grid{parm.n_scale}.x) % if belong to the grid
             Prim.varcovar(i_hard_data) = find(grid{parm.n_scale}.Y==Prim.y(i_hard_data) & grid{parm.n_scale}.X==Prim.x(i_hard_data));
         end
     end
-    
-    Prim.varcovar_safe= Prim.varcovar;
-    Res{1}.lambda0 = sparse(grid{parm.n_scale}.nxy, sum(Prim.varcovar==0)); % for point not on the grid
-    Res{1}.lambda = sparse(grid{parm.n_scale}.nxy,grid{parm.n_scale}.nxy);
-    
+    % We'll might need the index of hard data in the lambda matrix
+    % (computing Covariance matrix.
+    Res{end}.lambda_Prim = Prim.varcovar;
 end
 
 %% * 1. *Simulation of Scale*
@@ -355,7 +360,7 @@ for i_scale=1:parm.n_scale % for each scale
         Res{i_scale}.m_ns{i_realisation}(I) = Nscore.forward(Res{i_scale}.m{i_realisation}(I));
     end
     
-
+    % ... ?
     if parm.varcovar
         Res{i_scale}.varcovar_id=reshape( find(ismember(grid{parm.n_scale}.X, Res{i_scale}.x) &  ismember(grid{parm.n_scale}.Y, Res{i_scale}.y)), Res{i_scale}.ny, Res{i_scale}.nx);
     end
@@ -400,54 +405,63 @@ for i_scale=1:parm.n_scale % for each scale
     Res{i_scale}.sim.xy=grid{i_scale}.xy(isnan(Res{i_scale}.m{1}));
     Res{i_scale}.sim.n=numel(Res{i_scale}.sim.xy);
     if parm.cstk
-        switch parm.path
-            case 'random'
+        rng(1234)
+        if strcmp(parm.path,'linear')
+            if parm.path_random
                 Res{i_scale}.path = randperm(Res{i_scale}.sim.n);
-            case 'row-by-row'
+            else
                 Res{i_scale}.path = 1:Res{i_scale}.sim.n;
-            case 'spiralin'
-                dist = Inf*ones(Res{i_scale}.sim.n,1);
-                X = Res{i_scale}.X(~isnan(Res{i_scale}.m{1}));
-                Y = Res{i_scale}.Y(~isnan(Res{i_scale}.m{1}));
-                for i_hard_data=1:numel(X)
-                    dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-X(i_hard_data)).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Y(i_hard_data)).^2 );
-                    dist = min(dist,dist_chall');
+            end
+        elseif  strcmp(parm.path,'spiralin') || strcmp(parm.path,'spiralout') || strcmp(parm.path,'maximize')
+            dist = Inf*ones(Res{i_scale}.sim.n,1);
+            X = Res{i_scale}.X(~isnan(Res{i_scale}.m{1}));
+            Y = Res{i_scale}.Y(~isnan(Res{i_scale}.m{1}));
+            for i_hard_data=1:numel(X)
+                dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-X(i_hard_data)).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Y(i_hard_data)).^2 );
+                dist = min(dist,dist_chall');
+            end
+            if  strcmp(parm.path,'spiralout')
+                if parm.path_random
+                    [dist_perm,id_perm] = randperm(dist);
+                    [~,id_sort] = sort(dist_perm);
+                    Res{i_scale}.path = id_perm(id_sort);
+                else
+                    [~,Res{i_scale}.path] = sort(dist);
                 end
-                [~,Res{i_scale}.path] = sort(dist);
-                clear dist dist_chall X Y
-            case 'spiralout'
-                dist = Inf*ones(Res{i_scale}.sim.n,1);
-                X = Res{i_scale}.X(~isnan(Res{i_scale}.m{1}));
-                Y = Res{i_scale}.Y(~isnan(Res{i_scale}.m{1}));
-                for i_hard_data=1:numel(X)
-                    dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-X(i_hard_data)).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Y(i_hard_data)).^2 );
-                    dist = min(dist,dist_chall');
+            elseif strcmp(parm.path,'spiralin')
+                if parm.path_random
+                    [dist_perm,id_perm] = randperm(dist);
+                    [~,id_sort] = sort(dist_perm,'descend');
+                    Res{i_scale}.path = id_perm(id_sort);
+                else
+                    [~,Res{i_scale}.path] = sort(dist,'descend');
                 end
-                [~,Res{i_scale}.path] = sort(dist,'descend');
-                clear dist dist_chall X Y
-            case 'maximize'
-                dist = Inf*ones(Res{i_scale}.sim.n,1);
-                X = Res{i_scale}.X(~isnan(Res{i_scale}.m{1}));
-                Y = Res{i_scale}.Y(~isnan(Res{i_scale}.m{1}));
-                for i_hard_data=1:numel(X)
-                    dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-X(i_hard_data)).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Y(i_hard_data)).^2 );
-                    dist = min(dist,dist_chall');
-                end
+            elseif strcmp(parm.path,'maximize')
                 Res{i_scale}.path = nan(Res{i_scale}.sim.n,1);
                 for i_pt = 1:Res{i_scale}.sim.n
-                    [~,Res{i_scale}.path(i_pt)] = max(dist);
+                    if parm.path_random && i_pt~=1
+                        m=max(dist);
+                        Res{i_scale}.path(i_pt) = datasample(find(m==dist),1); % randomize the selection in case of equal distence. (avoid a structural sampling)
+                    else
+                        [~,Res{i_scale}.path(i_pt)] = max(dist);
+                    end
                     dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-Res{i_scale}.X(Res{i_scale}.sim.xy(Res{i_scale}.path(i_pt)))).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Res{i_scale}.Y(Res{i_scale}.sim.xy(Res{i_scale}.path(i_pt)))).^2 );
                     dist = min(dist,dist_chall');
                 end
-                clear dist dist_chall X Y
-            otherwise
-                error('path method not define')
-              
+            end
+            
+            clear dist dist_chall X Y m
+        else
+            error('path method not define')
+            
         end
+         
+        assert(numel(Res{i_scale}.path)==numel(unique(Res{i_scale}.path)),'not unique path')
         Res{i_scale}.sim.xy_r=Res{i_scale}.sim.xy(Res{i_scale}.path); % randomly permutate the ordered vector of index of Y.xy
         [Res{i_scale}.sim.y_r,Res{i_scale}.sim.x_r] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
         
     else
+        disp('yes'); rng('shuffle')
         for i_realisation=1:parm.n_realisation
             Res{i_scale}.sim.xy_r{i_realisation}=Res{i_scale}.sim.xy(randperm(Res{i_scale}.sim.n)); % randomly permutate the ordered vector of index of Y.xy
             [Res{i_scale}.sim.y_r{i_realisation}, Res{i_scale}.sim.x_r{i_realisation}] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r{i_realisation}); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
@@ -613,7 +627,7 @@ for i_scale=1:parm.n_scale % for each scale
             
                     
             %% 3.5 Compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
-            if parm.varcovar && i_realisation==1
+            if parm.varcovar && i_realisation==parm.n_realisation
                 pt_id = find(Res{i_scale}.y(pt.y)==grid{parm.n_scale}.Y&Res{i_scale}.x(pt.x)==grid{parm.n_scale}.X);
                 
                 if parm.neigh % if option smart neihbour is selected
@@ -635,7 +649,7 @@ for i_scale=1:parm.n_scale % for each scale
         % NOTHING SHOULD BE DONE AFTER THAT WHICH INVOLVED THE WEIGHT
         % BECAUSE WE CHANGED RES.M...
     end
-    
+
     % display info
     disp(['Simulation ' num2str(i_scale) '/' num2str(parm.n_scale) ' finished in : ' num2str(toc(t.tic.scale))])
     t_scale(i_scale) = toc(t.tic.scale);
