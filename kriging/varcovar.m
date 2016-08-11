@@ -23,7 +23,7 @@ if ~exist('vario','var'); vario = 0; end;
 if ~exist('ord','var'); ord = 0; end;
 
 % if presence of hard data, separate l from l0, compute EY.
-if isfield(Res{end},'lambda_Prim') 
+if isfield(Res{end},'lambda_Prim') && numel(Res{end}.lambda_Prim)>0
     l = Res{end}.lambda;
     l(Res{end}.lambda_Prim,:) = [];
     l(:,Res{end}.lambda_Prim) = [];
@@ -36,6 +36,7 @@ if isfield(Res{end},'lambda_Prim')
         EY(~any(bsxfun(@eq,a,Res{end}.lambda_Prim),1)) = -inv(l) * l0 * Prim.d;
         varargout{4} = EY;
     end
+    varargout{3} = l0;
 else
     l=Res{end}.lambda;
 end
@@ -93,7 +94,7 @@ if vario
     ny=Res{end}.ny;
     nx=Res{end}.nx;
     nxy=Res{end}.nxy;
-    clear Res
+
     % create the 3D matrix of variogram. 
     vario=cell(3,1);
     vario{3} = nan(ny*2-1,nx*2-1,nxy);
@@ -118,7 +119,7 @@ if vario
     vario{1}.h = [ vario{2}(ny,nx), nanmean( [vario{2}(ny,nx-1:-1:1); vario{2}(ny,nx+1:end)])];
     vario{1}.v = [ vario{2}(ny,nx), nanmean( [vario{2}(ny-1:-1:1,nx)'; vario{2}(ny+1:end,nx)'])];
     
-    vario{3} = [];
+    %vario{3} = [];
     
     varargout{5} = vario;
 end
@@ -136,13 +137,14 @@ if ord
         CY = CY(id,id);
     end
     
-    triu(CY)=NaN;
+    idx = triu(true(size(CY)), -1);
+    CY(idx)=NaN;
     
 end
 
 varargout{1} = CY;
 varargout{2} = l;
-varargout{3} = l0;
+
 
 
 

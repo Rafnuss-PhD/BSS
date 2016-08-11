@@ -485,7 +485,11 @@ for i_scale=1:parm.n_scale % for each scale
             %% * 3.2 *SECONDARY DISTRIBUTION*
             % Multiply the (nomalized) prior and likelihood to get the
             % (normalised) posteriori
-            pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_krig(i_scale) .* pt.krig.pdf.^parm.w_sec(i_scale);
+            %pt.sec.pdf(pt.sec.pdf==0)=eps; % if sec and krig don't have overlaps, put eps.
+            %pt.krig.pdf(pt.krig.pdf==0)=eps;
+            % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
+            pt.aggr.pdf = pt.sec.pdf.^(1-parm.w_krig(i_scale/parm.n_scale)) .* pt.krig.pdf.^parm.w_krig(i_scale/parm.n_scale);
+            
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -585,9 +589,11 @@ for i_scale=1:parm.n_scale % for each scale
             Res{i_scale}.m{i_realisation}(pt.y,pt.x) = pt.sampled;
             Res{i_scale}.m_ns{i_realisation}(pt.y,pt.x) = Nscore.forward(pt.sampled); % add only the last simulated point to normal score
             
+           
         end
     end
     
+     Res{i_scale}.w_krig = parm.w_krig(i_scale/parm.n_scale);
     % display info
     disp(['Simulation ' num2str(i_scale) '/' num2str(parm.n_scale) ' finished in : ' num2str(toc(t.tic.scale))])
     t_scale{i_scale} = toc(t.tic.scale);

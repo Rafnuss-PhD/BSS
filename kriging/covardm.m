@@ -11,6 +11,9 @@ Gam=['h==0                                              '; %nugget
      'exp(-h)                                           '; %exponential
      'exp(-(h).^2)                                      '; %gaussian
      '1-(1.5*min(h,1)/1-.5*(min(h,1)/1).^3)             '; %spherical
+     'exp(-sqrt(h))                                     '; %stable
+     '1./(1+h)                                          '; %hyperbolic
+     'sin(h)./h                                         '; %cardinal sine
      '1-h                                               '; %linear
      '1-3*min(h,1).^2+2*min(h,1).^3                     '; %modele Trochu
      '(h.^2).*log(max(h,eps))                           '; %spline plaque mince

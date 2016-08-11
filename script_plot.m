@@ -154,7 +154,8 @@ end
 
 X_true = Prim_true;
 Y= Res;
-X =Prim;
+X = Prim;
+Z =Sec;
 kernel = kern;
 kernel.y =kern.axis_prim;
 kernel.x =kern.axis_sec;

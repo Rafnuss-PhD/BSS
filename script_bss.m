@@ -81,12 +81,6 @@ parm.n_realisation  = 1;
 parm.par = 0;
 
 % parm.p_w = [0.5 0];   
-parm.w_X = @(scale,depth) 1;
-parm.w_Z = @(scale,depth) 1;
-parm.name           = 'test_grad_def';
-parm.scale = [6;5]
-parm.k.nb_neigh = [0 0 0 0 0; 4 4 4 4 4];
-parm.k.model    = [ 4 40 4 0; 1 1 1 0]; 
 %parm.plot.krig =1;
 % 
 % parm.fitvar         = 0;

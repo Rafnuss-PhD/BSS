@@ -79,10 +79,10 @@ else
     end
     
     % Force hard data
-%     if ~ismember([32 32], sel_g,'rows')
-%         sel_g=[ sel_g(1:end-1,:); 32 32];
-%         pt_krig.mask = [pt_krig.mask(1:end-1); find(ismember(sel_g_ini,[32 32],'rows')) ];
-%     end
+    if ~ismember([32 32], sel_g,'rows')
+        sel_g=[ sel_g(1:end-1,:); 32 32];
+        pt_krig.mask = [pt_krig.mask(1:end-1); find(ismember(sel_g_ini,[32 32],'rows')) ];
+    end
 end
 
 % disable for time saving
@@ -92,7 +92,7 @@ assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kri
 %%
 % * *KRIGING*: Find his kringing value in noraml space:
 
-[a0_C]=covardm_perso(sel_g,[Res.x(pt.x) Res.y(pt.y)],krig.covar);
+[a0_C,]=covardm_perso(sel_g,[Res.x(pt.x) Res.y(pt.y)],krig.covar);
 ab_C=covardm_perso(sel_g,sel_g,krig.covar);
 
 pt_krig.lambda = ab_C \ a0_C; % Ordinary

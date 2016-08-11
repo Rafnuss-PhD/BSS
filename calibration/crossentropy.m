@@ -15,7 +15,7 @@ if nargin == 1
     
 elseif nargin == 2
     % cross-entropy
-    pts = linspace(min([varargin{1};varargin{2}]),max([varargin{1};varargin{2}]),100);
+    pts = linspace(min([varargin{1}(:);varargin{2}(:)]),max([varargin{1}(:);varargin{2}(:)]),100);
     p = ksdensity(varargin{1},pts);
     q = ksdensity(varargin{2},pts);
     p = p ./ sum(p);
