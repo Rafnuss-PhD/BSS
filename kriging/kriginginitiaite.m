@@ -82,7 +82,7 @@ for i=1:numel(parm.k.covar)
             assert(isfield(parm.gen.covar, 'alpha'),'alpha covar is not properly define')
             assert(parm.gen.covar(i).alpha>0 && parm.gen.covar(i).alpha<2,'Alpha value not possible')
             intvario=.5;
-            parm.k.covar(i).g = @(h) 1- 1/(2^(parm.gen.covar(i).alpha-1) * gamma(parm.gen.covar(i).alpha)) * h.^parm.gen.covar(i).alpha .* besselj(parm.gen.covar(i).alpha,h);
+            parm.k.covar(i).g = @(h) 1/(2^(parm.gen.covar(i).alpha-1) * gamma(parm.gen.covar(i).alpha)) .* h.^parm.gen.covar(i).alpha .* besselk(parm.gen.covar(i).alpha,h);
         case 'logarithmic'
             parm.k.covar(i).g = @(h) 1-log(h+1);
             warning('Approx the integrale')
