@@ -63,7 +63,7 @@ if parm.neigh
     
 
 else
-    sel_g_ini=[Prim.x Prim.y; Res.X(~isnan(Res.m{i_realisation})) Res.Y(~isnan(Res.m{i_realisation}))]; % remove the u
+    sel_g_ini=[Prim.x Prim.y; Res.X(~isnan(Res.m{i_realisation}(:))) Res.Y(~isnan(Res.m{i_realisation}(:)))]; % remove the u
     % Just remove point outside search radius and keep 
     % This is identical (more or less) to cokri_cam (sort and selection)
     center = [Res.x(pt.x) Res.y(pt.y)];
@@ -72,7 +72,7 @@ else
     sb_i=1;
     pt_krig.mask=[];
     sel_g=zeros(0,2);
-    while sb_i<sum(krig.nb_neigh(2,:)) && numel(dist_s)>=sb_i && dist_s(sb_i) < krig.wradius
+    while sb_i<=sum(krig.nb_neigh(2,:)) && numel(dist_s)>=sb_i && dist_s(sb_i) < krig.wradius
         pt_krig.mask=[pt_krig.mask; idx(sb_i)];
         sel_g = [sel_g; sel_g_ini(idx(sb_i),:)];
         sb_i=sb_i+1;
@@ -95,7 +95,7 @@ assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kri
 [a0_C]=covardm_perso(sel_g,[Res.x(pt.x) Res.y(pt.y)],krig.covar);
 ab_C=covardm_perso(sel_g,sel_g,krig.covar);
 
-pt_krig.lambda = ab_C \ a0_C; % Ordinary
+pt_krig.lambda = ab_C \ a0_C;
 pt_krig.s = sum([krig.covar.c0]) - pt_krig.lambda'*a0_C;
 
 % disable for time saving

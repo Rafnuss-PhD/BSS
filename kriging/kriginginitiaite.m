@@ -81,8 +81,8 @@ for i=1:numel(parm.k.covar)
         case 'k-bessel'
             assert(isfield(parm.gen.covar, 'alpha'),'alpha covar is not properly define')
             assert(parm.gen.covar(i).alpha>0 && parm.gen.covar(i).alpha<2,'Alpha value not possible')
-            intvario=.5;
-            parm.k.covar(i).g = @(h) 1/(2^(parm.gen.covar(i).alpha-1) * gamma(parm.gen.covar(i).alpha)) .* h.^parm.gen.covar(i).alpha .* besselk(parm.gen.covar(i).alpha,h);
+            intvario=[.35 .5];
+            parm.k.covar(i).g = @(h) 1/(2^(parm.gen.covar(i).alpha-1) * gamma(parm.gen.covar(i).alpha)) .* max(h,eps).^parm.gen.covar(i).alpha .* besselk(parm.gen.covar(i).alpha,max(h,eps));
         case 'logarithmic'
             parm.k.covar(i).g = @(h) 1-log(h+1);
             warning('Approx the integrale')
@@ -96,21 +96,30 @@ for i=1:numel(parm.k.covar)
         case 'hyperbolic'
             parm.k.covar(i).g = @(h) 1./(1+h);
             warning('Approx the integrale')
-            intvario=.05;
+            intvario=[.2 .05];
         case 'cardinal sine'
             intvario=.2;
             parm.k.covar(i).g = @(h) sin(max(eps,h))./max(eps,h);
+        case 'matheron'
+            parm.k.covar(i).g = @(h) 1./(h);
         otherwise
             error('Variogram type not defined')
     end
-
-    parm.k.covar(i).range=parm.gen.covar(i).range*intvario;
+    
+    if numel(parm.gen.covar(1).range)==1 || numel(intvario)==1
+        parm.k.covar(i).range=parm.gen.covar(i).range*intvario(1);
+    elseif numel(parm.gen.covar(1).range)==2
+        parm.k.covar(i).range=parm.gen.covar(i).range*intvario(2);
+    elseif numel(parm.k.covar(i).azimuth)==3
+        parm.k.covar(i).range=parm.gen.covar(i).range*intvario(3);
+    end
+    
 end
 
 for i=1:numel(parm.k.covar)
-    if numel(parm.k.covar(i).azimuth)==0
-        parm.k.covar(i).cx = 1/diag(parm.k.covar(i).range);
-    elseif numel(parm.k.covar(i).azimuth)==1
+    if numel(parm.gen.covar(1).range)==1 || numel(parm.gen.covar(1).azimuth)==0
+        parm.k.covar(i).cx = 1/diag(parm.k.covar(i).range(1));
+    elseif numel(parm.gen.covar(1).range)==2
         ang=parm.k.covar(i).azimuth; cang=cos(ang/180*pi); sang=sin(ang/180*pi);
         rot = [cang,-sang;sang,cang];
         parm.k.covar(i).cx = rot/diag(parm.k.covar(i).range);

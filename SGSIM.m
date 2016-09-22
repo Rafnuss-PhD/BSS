@@ -124,11 +124,11 @@ if ~isfield(parm, 'k') || ~isfield(parm.k, 'wradius')
 end
 
 % Compute the rot matrix
-for i=1:numel(parm.k.covar)
-    ang=parm.k.covar(i).azimuth; cang=cos(ang/180*pi); sang=sin(ang/180*pi);
-    rot = [cang,-sang;sang,cang];
-    parm.k.covar(i).cx = rot/diag(parm.k.covar(i).range);
-end
+% for i=1:numel(parm.k.covar)
+%     ang=parm.k.covar(i).azimuth; cang=cos(ang/180*pi); sang=sin(ang/180*pi);
+%     rot = [cang,-sang;sang,cang];
+%     parm.k.covar(i).cx = rot/diag(parm.k.covar(i).range);
+% end
 
 k = parm.k;
 
@@ -139,6 +139,7 @@ if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'sb'),    parm.plot.sb     =0; 
 if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'kernel'),parm.plot.kernel =0; end
 if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'fitvar'),parm.plot.fitvar =0; end
 if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'krig'),  parm.plot.krig   =0; end
+if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'presentation'),  parm.plot.presentation   =0; end
 
 
 
@@ -295,6 +296,10 @@ t_cstk = zeros(parm.n_scale,1);
 Res{1}.dist=[];
 Res{1}.s =[];
 
+if parm.plot.presentation
+    i_frame=1;
+    fig3=figure('position',[100 100 800 1000]);
+end
 
 if parm.varcovar % compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
     % We store the lambda matrix in Res{end}, even for conditional simulation
@@ -450,9 +455,26 @@ for i_scale=1:parm.n_scale % for each scale
                     dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-Res{i_scale}.X(Res{i_scale}.sim.xy(Res{i_scale}.path(i_pt)))).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Res{i_scale}.Y(Res{i_scale}.sim.xy(Res{i_scale}.path(i_pt)))).^2 );
                     dist = min(dist,dist_chall');
                 end
-            end
             
+            end
             clear dist dist_chall X Y m
+        elseif strcmp(parm.path,'quasirandom')
+            p = haltonset(ndims(grid{i_scale}.X));
+            Res{i_scale}.path =nan(Res{i_scale}.sim.n,1);
+            i=1; j=1;
+            while any(isnan(Res{i_scale}.path))
+                sub = floor(p(j,:).*[grid{i_scale}.nx grid{i_scale}.ny])+1;
+                ind = sub2ind([grid{i_scale}.nx grid{i_scale}.ny], sub(1), sub(2) );
+                if ~ismember(ind,Res{i_scale}.sim.xy(Res{i_scale}.path(1:i-1))) && ismember(ind,Res{i_scale}.sim.xy)
+                    Res{i_scale}.path(i) = find(Res{i_scale}.sim.xy==ind);
+                    i=i+1;
+                end
+                j=j+1;
+            end
+        elseif numel(parm.path) == Res{i_scale}.sim.n
+            parm.path = round(parm.path);
+            assert(all(sort(parm.path(:)) == (1:Res{i_scale}.sim.n)'),'not valid path')
+            Res{i_scale}.path = round(parm.path);
         else
             error('path method not define')
             
@@ -480,27 +502,26 @@ for i_scale=1:parm.n_scale % for each scale
     i_plot=0; % used for computing the number of point simulated. Used for ploting
     for i_pt=1:Res{i_scale}.sim.n; % loop over each point
         i_plot=i_plot+1;
-        
-%         if i_pt==492
-%             deo
-%         end
+        %t.tic.pt = tic;
             
         if parm.cstk % if option constant weight is activate.
             % Find the current point position on the grid{i_scale}. It
             % will be used on each realisation.
-            t.tic.cstk = tic;
             pt.x = Res{i_scale}.sim.x_r(i_pt);
             pt.y = Res{i_scale}.sim.y_r(i_pt);
             
             % Kriging system
+            %t.tic.krig = tic;
             %[pt.krig, h_dist] = kriging(pt,Res{i_scale},Prim,k,parm,1);
-            [pt.krig] = kriging(pt,Res{i_scale},Prim,k,parm,1);
-            t_cstk(i_scale)=t_cstk(i_scale)+toc(t.tic.cstk);
+             [pt.krig] = kriging(pt,Res{i_scale},Prim,k,parm,1);
+             %t.toc.krig(i_pt) = toc(t.tic.krig);
         end
         
         
         %% * 3. *Simulation of Realisation*
         for i_realisation=1:parm.n_realisation
+
+            
             if ~parm.cstk
                 % Find the current point position on the grid{i_scale}.
                 % This is changing for each realisation
@@ -508,8 +529,10 @@ for i_scale=1:parm.n_scale % for each scale
                 pt.y = Res{i_scale}.sim.y_r{i_realisation}(i_pt);
                 
                 % Kriging h_hist
+                %t.tic.krig = tic;
                 %[pt.krig, h_dist] = kriging(pt,Res{i_scale},Prim,k,parm,i_realisation);
                 [pt.krig] = kriging(pt,Res{i_scale},Prim,k,parm,i_realisation);
+                %t.toc.krig(i_pt) = toc(t.tic.krig);
             end
             
             % add the count to covar
@@ -527,7 +550,7 @@ for i_scale=1:parm.n_scale % for each scale
             end
             
             if isempty(pt.krig.m)
-                warning('Empty estimate. replace by 0')
+                %warning('Empty estimate. replace by 0')
                 pt.krig.m=0;
             end
             
@@ -557,7 +580,7 @@ for i_scale=1:parm.n_scale % for each scale
             
             
             %% * 3.4 *PLOTIT*
-            if parm.plot.krig && i_realisation==1 %&& (i_plot==1261   || Nscore.forward(pt.sampled)<-3  || Nscore.forward(pt.sampled)>3 ) %|| mod(i_plot,50)==0
+            if parm.plot.krig && i_realisation==1 && i_plot>1 %%  || Nscore.forward(pt.sampled)<-3  || Nscore.forward(pt.sampled)>3 ) %|| mod(i_plot,50)==0
                 figure(1); clf
                 
                 subplot(3,2,[1 4]);
@@ -632,6 +655,62 @@ for i_scale=1:parm.n_scale % for each scale
                 keyboard
             end
             
+            if parm.plot.presentation && i_plot>1
+                c_axis=[-2 2];
+                figure(fig3); clf;  
+                subplot(4,1,[1 3]); hold on;set(gca,'XTick',[]);set(gca,'YTick',[]);xlabel('X'); ylabel('Y'); box on; caxis(c_axis)
+                imagesc(grid{end}.x,grid{end}.y,Res{i_scale}.m_ns{1},'AlphaData',~isnan(Res{i_scale}.m_ns{1}));
+                test = [255, 255, 204;161, 218, 180;65, 182, 196;44, 127, 184;8, 104, 172;37, 52, 148]/255;
+                colormap([interp1(linspace(1,64,size(test,1)), test(:,1), 1:64)' interp1(linspace(1,64,size(test,1)), test(:,2), 1:64)' interp1(linspace(1,64,size(test,1)), test(:,3), 1:64)'])
+                mesh(.5+[-1 grid{end}.x],.5+[-1 grid{end}.y],zeros(grid{end}.nx+1,grid{end}.ny+1),'EdgeColor','k','facecolor','none','linewidth',1);axis equal tight
+                
+                 subplot(4,1,4); hold on;set(gca,'XTick',[]);set(gca,'YTick',[]); xlabel('Z'); ylabel('PDF(Z)'); xlim(c_axis); ylim([0 .3]);caxis(c_axis)
+                 lambda_c= 36+60.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./range(abs(pt.krig.lambda));
+                 lambda_w= eps+4.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./max(range(abs(pt.krig.lambda)),eps);
+                 lambda_w = lambda_w./sum(lambda_w);
+                 %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+
+%                 subplot(4,1,4); hold on; xlabel('Simulation Node'); ylabel('Time of Kriging'); xlim([0 Res{i_scale}.sim.n]); ylim([0 5]);
+%                 plot(1:i_pt,t.toc.krig*1000)
+%                 scatter(1:i_pt,t.toc.krig*1000,'ok','filled')
+%                 Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                
+                
+                subplot(4,1,[1 3]); 
+                mesh(pt.x+[-1.5 -.5],pt.y+[-1.5 -.5],zeros(2),'EdgeColor','r','facecolor','none','LineWidth',2);
+                
+                %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                
+                sel_g_ini=[Prim.x Prim.y; Res{i_scale}.X(~isnan(Res{i_scale}.m{i_realisation})) Res{i_scale}.Y(~isnan(Res{i_scale}.m{i_realisation}))];
+                sel_g = sel_g_ini(pt.krig.mask,:);
+                for i=1:size(sel_g,1)
+                    plot([pt.x-1 sel_g(i,1)],[pt.y-1 sel_g(i,2)], 'k', 'linewidth',lambda_w(i))
+                end
+                %title(['Time of kriging:  ' num2str(round(t.toc.krig(end)*100000)/100) 'ms   | Total time of kriging: ' num2str(round(sum(t.toc.krig)*100000)/100)])
+                
+                
+                
+                %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                
+                subplot(4,1,4); 
+                XY_ns = [Prim.d_ns; Res{i_scale}.m_ns{1}(~isnan(Res{i_scale}.m_ns{1}))];
+                scatter(XY_ns(pt.krig.mask),zeros(numel(pt.krig.mask),1),lambda_c,XY_ns(pt.krig.mask),'o','filled')
+                
+                
+                %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                
+                plot( parm.support_dist,pt.krig.pdf,'k'); axis 'auto y'
+                
+                %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                
+                plot([pt.sampled pt.sampled],[0 interp1(parm.support_dist,pt.krig.pdf,pt.sampled)],'r','LineWidth',2)
+                scatter(pt.sampled,interp1(parm.support_dist,pt.krig.pdf,pt.sampled),[],pt.sampled,'o','filled')
+                Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+
+
+                
+            end
+            
                     
             %% 3.5 Compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
             if parm.varcovar && i_realisation==parm.n_realisation
@@ -649,16 +728,19 @@ for i_scale=1:parm.n_scale % for each scale
                 clear pt_id
             end
             
+            %Res{end}.s(i_pt)=sqrt(pt.krig.s);
+            
             %% 3.6 *Back transform*
             Res{i_scale}.m{i_realisation}(pt.y,pt.x) = pt.sampled;
             Res{i_scale}.m_ns{i_realisation}(pt.y,pt.x) = Nscore.forward(pt.sampled); % add only the last simulated point to normal score
         end
         % NOTHING SHOULD BE DONE AFTER THAT WHICH INVOLVED THE WEIGHT
         % BECAUSE WE CHANGED RES.M...
+        % t.toc.pt(i_pt)=toc(t.tic.pt);
     end
 
     % display info
-    disp(['Simulation ' num2str(i_scale) '/' num2str(parm.n_scale) ' finished in : ' num2str(toc(t.tic.scale))])
+    % disp(['Simulation ' num2str(i_scale) '/' num2str(parm.n_scale) ' finished in : ' num2str(toc(t.tic.scale))])
     t_scale(i_scale) = toc(t.tic.scale);
     
 
