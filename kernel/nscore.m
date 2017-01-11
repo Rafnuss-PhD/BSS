@@ -45,6 +45,11 @@ f = (ft(1:end-1)+ft(2:end))/2;
 % The solution was to fit a expenential, between the first point of the
 % kernel and the first point of the ecdf, then use the point of the kernel
 % as ...
+
+warning('Implement Hermite Polynomial: PCHIP (see course of Fontainebleau)')
+pause;
+
+
 dx=min([10; numel(X)]); % number of point to take in the interpolation:
 if support_dist(1)>0
     fx= 'power1';

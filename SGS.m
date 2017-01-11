@@ -59,7 +59,7 @@
 % Referances:
 %
 
-function [Res, t, k, parm, filename] = SGSIM(Prim,grid_gen,parm)
+function [Res, t, k, parm, filename] = SGS(Prim,grid_gen,parm)
 t.global = tic;
 addpath(genpath('./.'))
 
@@ -80,6 +80,7 @@ if ~isfield(parm, 'familyname'),    parm.familyname     = ''; end
 if ~isfield(parm, 'unit'),          parm.unit           = ''; end % unit of the primary variable, used in plot
 if ~isfield(parm, 'n_realisation'), parm.n_realisation  = 1; end
 if ~isfield(parm, 'par'),           parm.par            = 1; end
+if ~isfield(parm, 'dist'),          parm.dist           = 0; end
 if ~isfield(parm, 'par_n'),         parm.par_n          = feature('numcores'); end
 if ~isfield(parm, 'notify'),
     parm.notify          = 0;
@@ -87,7 +88,7 @@ else
     if ~isfield(parm, 'notify_email'), parm.notify_email  = 'rafnuss@gmail.com'; end
 end
 if ~isfield(parm, 'path'),          parm.path            = 'linear'; end
-if ~isfield(parm, 'path_random'),   parm.path_random     = false; end
+if ~isfield(parm, 'path_random'),   parm.path_random     = true; end
 if ~isfield(parm, 'varcovar'),      parm.path            = 0; end
 % Scale and weight parameters
 if ~isfield(parm, 'scale')
@@ -109,12 +110,12 @@ if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end % fit the variogram to the 
 parm.support_dist = linspace(-5,5,500)';
 
 % Kriging parameter
-parm = kriginginitiaite(parm);
-if ~isfield(parm, 'neigh'),         parm.neigh          =1; end % smart-neighbouring activated or not
-if ~isfield(parm, 'nscore'),        parm.nscore         =1; end % use normal score (strongly advice to use it.)
-if ~isfield(parm, 'k') || ~isfield(parm.k, 'nb_neigh')
-    parm.k.nb_neigh = [0 0 0 0 0; 5 5 5 5 5];
-end
+parm.k.covar = kriginginitiaite(parm.k.covar);
+if ~isfield(parm, 'nscore'),        parm.nscore        =1; end % use normal score (strongly advice to use it.)
+if ~isfield(parm, 'k') || ~isfield(parm.k, 'method'),  parm.k.method = 'smart'; end
+if ~isfield(parm, 'k') || ~isfield(parm.k, 'quad'),  parm.k.quad = 0; end
+if ~isfield(parm, 'k') || ~isfield(parm.k, 'nb'),  parm.k.nb = [0 0 0 0 0; 5 5 5 5 5]; end
+
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'sb') || ~isfield(parm.k.sb, 'nx') || ~isfield(parm.k.sb, 'ny') % super-block grid size (hard data)
     parm.k.sb.nx    = ceil(grid_gen.x(end)/parm.k.covar(1).range(1)*3);
     parm.k.sb.ny    = ceil(grid_gen.y(end)/parm.k.covar(1).range(2)*3);
@@ -122,14 +123,6 @@ end
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'wradius')
     parm.k.wradius  = Inf;
 end
-
-% Compute the rot matrix
-% for i=1:numel(parm.k.covar)
-%     ang=parm.k.covar(i).azimuth; cang=cos(ang/180*pi); sang=sin(ang/180*pi);
-%     rot = [cang,-sang;sang,cang];
-%     parm.k.covar(i).cx = rot/diag(parm.k.covar(i).range);
-% end
-
 k = parm.k;
 
 % Plot
@@ -166,9 +159,9 @@ for i_scale = 1:parm.n_scale
     grid{i_scale}.dx=grid_gen.x(end)/(grid{i_scale}.nx-1);
     grid{i_scale}.dy=grid_gen.y(end)/(grid{i_scale}.ny-1);
     
-    grid{i_scale}.x=linspace(0, grid_gen.x(end), grid{i_scale}.nx); % coordinate of cells center
-    grid{i_scale}.y=linspace(0, grid_gen.y(end), grid{i_scale}.ny);
-    grid{i_scale}.xy=1:grid{i_scale}.nxy;
+    grid{i_scale}.x=linspace(0, grid_gen.x(end), grid{i_scale}.nx)'; % coordinate of cells center
+    grid{i_scale}.y=linspace(0, grid_gen.y(end), grid{i_scale}.ny)';
+    grid{i_scale}.xy=(1:grid{i_scale}.nxy)';
     
     [grid{i_scale}.X, grid{i_scale}.Y] = meshgrid(grid{i_scale}.x,grid{i_scale}.y); % matrix coordinate
 end
@@ -180,25 +173,12 @@ end
 % (inside the ellipse/windows) to the centre of the superblock will be
 % true. During the kriging, the mask of the superblock of the estimated
 % point will be used to select the hard to add to the kriging system
-if parm.neigh
+if strcmp(parm.k.method,'sbss')
     k.sb.nx = parm.k.sb.nx; % number of superblock grid
     k.sb.ny = parm.k.sb.ny;
-    [k, Prim] = SuperBlockGridCreation(k, grid_gen.x(end), grid_gen.y(end), Prim, parm.plot.sb, parm.k.nb_neigh(2,5));
+    [k, Prim] = SuperBlockGridCreation(k, grid_gen.x(end), grid_gen.y(end), Prim, parm.plot.sb, parm.k.nb(2,5));
 end
 
-
-% %% * 2. *NON-PARAMETRIC RELATIONSHIP*
-% % The joint pdf of the primary and secondary is build using a bivariate
-% % kernel density estimator (Botev, Grotowski, & Kroese, 2010).
-% if Prim.n~=0
-%     kern = kernel(Prim, Sec, parm.kernel_range, parm.plot.kernel);
-% else
-%     warning('No hard data !')
-%     assert(all(parm.p_w(1,:)==0),'The Secondary cannot be used !')
-%     kern.axis_prim=linspace(-5,5,100)';
-%     kern.axis_sec=kern.axis_prim;
-%     kern.dens=ones(100,100);
-% end
 
 
 %% * 3. *NORMAL SCORE TRANSFORM*
@@ -223,7 +203,7 @@ Prim.d_ns = Nscore.forward(Prim.d);
 
 %% * 4. *RUN SIMULATION*
 
-if parm.neigh; k.sb.mask_ini = k.sb.mask; end % mask will be change after, we preserve its structure
+if strcmp(parm.k.method,'sbss'); k.sb.mask_ini = k.sb.mask; end % mask will be change after, we preserve its structure
 
 if parm.par && parm.n_realisation~=1 % if parralelelisation is selected
     delete(gcp('nocreate'));
@@ -237,7 +217,7 @@ if parm.par && parm.n_realisation~=1 % if parralelelisation is selected
     parm_pool.n_realisation = par_n_realisation;
     
     parfor pool_i=1:poolobj.NumWorkers
-        [RR{pool_i}, tt{pool_i}]=SGSIM_in(Prim, k, Nscore, grid, parm_pool);
+        [RR{pool_i}, tt{pool_i}]=SGS_in(Prim, k, Nscore, grid, parm_pool);
     end
     delete(poolobj)
     
@@ -247,20 +227,28 @@ if parm.par && parm.n_realisation~=1 % if parralelelisation is selected
             Res{i_scale}.m = [Res{i_scale}.m; RR{pool_i}{i_scale}.m];
             Res{i_scale}.m_ns = [Res{i_scale}.m_ns; RR{pool_i}{i_scale}.m_ns];
         end
+        t.scale = [t.scale; tt{pool_i}.scale];
+        t.cstk = [t.cstk; tt{pool_i}.cstk];
+        t.pt = [t.pt; tt{pool_i}.pt];
+        t.krig = [t.krig; tt{pool_i}.krig];
     end
-    
-    
+
 else
-    [Res,t.scale,t.cstk] = SGSIM_in(Prim, k, Nscore, grid, parm);
+    [Res,t_out] = SGS_in(Prim, k, Nscore, grid, parm);
+    t.scale = t_out.scale;
+    t.cstk = t_out.cstk;
+    t.pt = t_out.pt;
+    t.krig = t_out.krig;
 end
 
 
 % save intial value
-if parm.neigh; k.sb.mask = k.sb.mask_ini; end
-clear X_ini k.sb.mask_ini
+if strcmp(parm.k.method,'sbss'); k.sb.mask = k.sb.mask_ini; end
 
 
-t.global = toc(t.global );
+
+t.global = toc(t.global);
+
 
 
 %% * 5. *SAVE IT*
@@ -284,17 +272,21 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [Res,t_scale,t_cstk]=SGSIM_in(Prim, k, Nscore, grid, parm)
+function [Res,t_out]=SGS_in(Prim, k, Nscore, grid, parm)
 
 clear parm.k
 
 Res = cell(parm.n_scale,1);
-t_scale = zeros(parm.n_scale,1);
-t_cstk = zeros(parm.n_scale,1);
+t.toc.scale = [];
+t.toc.cstk = [];
+t.toc.pt = [];
+t.toc.krig = [];
 
-% k.covar(1).dist=[];
-Res{1}.dist=[];
-Res{1}.s =[];
+if parm.dist
+    % k.covar(1).dist=[];
+    Res{1}.dist=[];
+    Res{1}.s =[];
+end
 
 if parm.plot.presentation
     i_frame=1;
@@ -303,7 +295,7 @@ end
 
 if parm.varcovar % compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
     % We store the lambda matrix in Res{end}, even for conditional simulation
-    % we still store them all together on the same lambda (no lambda0). 
+    % we still store them all together on the same lambda (no lambda0).
     Res{end}.lambda = sparse(grid{parm.n_scale}.nxy,grid{parm.n_scale}.nxy);
     
     % But this require then to have all conditioning point in the finale grid!!
@@ -357,7 +349,7 @@ for i_scale=1:parm.n_scale % for each scale
     Prim.y(hard_data_idx)=[];
     Prim.d_ns(hard_data_idx)=[];
     if parm.varcovar; Prim.varcovar(hard_data_idx)=[]; end
-    if parm.neigh; k.sb.mask(:,:,hard_data_idx)=[]; end
+    if strcmp(parm.k.method,'sbss'); k.sb.mask(:,:,hard_data_idx)=[]; end
     Prim.n=numel(Prim.d);
     
     % Create the normal space result matrix and populate with known value
@@ -378,24 +370,26 @@ for i_scale=1:parm.n_scale % for each scale
     % Create the windows for kringing with the function to compute the
     % normalized distence and the order of visit of the cells. Spiral
     % Search setting: previously data (on grid{i_scale} location)
-    if parm.neigh
-        [k.ss.el.X, k.ss.el.Y] = meshgrid(0:max(ceil(k.range(1)*k.wradius/grid{i_scale}.dx),ceil(k.range(2)*k.wradius/grid{i_scale}.dy)));% grid{i_scale} of searching windows
-        [k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid{i_scale}.dx, k.ss.el.Y*grid{i_scale}.dy, k.rotation, k.range); % transforms the grid{i_scale}
+    if strcmp(parm.k.method,'sbss')
+        k.ss.el.dw = ceil(min(max(k.covar(1).range*k.wradius./[grid{i_scale}.dx grid{i_scale}.dy]), max(grid{i_scale}.nx,grid{i_scale}.ny)));
+        
+        [k.ss.el.X, k.ss.el.Y] = meshgrid(-k.ss.el.dw:k.ss.el.dw);% grid{i_scale} of searching windows
+        [k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid{i_scale}.dx, k.ss.el.Y*grid{i_scale}.dy, k.covar(1).azimuth, k.covar(1).range); % transforms the grid{i_scale}
         k.ss.el.dist = sqrt(k.ss.el.X_T.^2 + k.ss.el.Y_T.^2); % find distence
         [k.ss.el.dist_s, k.ss.el.dist_idx] = sort(k.ss.el.dist(:)); % sort according distence.
         k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); % sort the axis
         k.ss.el.Y_s=k.ss.el.Y(k.ss.el.dist_idx);
         
-        ss_id = bsxfun(@ge,k.ss.el.X_s,abs(k.qs2(:,1))') & bsxfun(@ge,k.ss.el.Y_s,abs(k.qs2(:,2))');
-        k.ss.el.X_f=zeros(sum(ss_id(:,1)),4);
-        k.ss.el.Y_f=k.ss.el.X_f;
-        k.ss.el.dist_f=k.ss.el.X_f;
-        
-        for q=1:4
-            k.ss.el.X_f(:,q) = k.qs(q,1) * k.ss.el.X_s(ss_id(:,q));
-            k.ss.el.Y_f(:,q) = k.qs(q,2) * k.ss.el.Y_s(ss_id(:,q));
-            k.ss.el.dist_f(:,q) = k.ss.el.dist_s(ss_id(:,q));
-        end
+%         ss_id = bsxfun(@ge,k.ss.el.X_s,abs(k.qs2(:,1))') & bsxfun(@ge,k.ss.el.Y_s,abs(k.qs2(:,2))');
+%         k.ss.el.X_f=zeros(sum(ss_id(:,1)),4);
+%         k.ss.el.Y_f=k.ss.el.X_f;
+%         k.ss.el.dist_f=k.ss.el.X_f;
+%         
+%         for q=1:4
+%             k.ss.el.X_f(:,q) = k.qs(q,1) * k.ss.el.X_s(ss_id(:,q));
+%             k.ss.el.Y_f(:,q) = k.qs(q,2) * k.ss.el.Y_s(ss_id(:,q));
+%             k.ss.el.dist_f(:,q) = k.ss.el.dist_s(ss_id(:,q));
+%         end
     end
     
     
@@ -409,87 +403,7 @@ for i_scale=1:parm.n_scale % for each scale
         parm.cstk=1;
     end
     
-    Res{i_scale}.sim.xy=grid{i_scale}.xy(isnan(Res{i_scale}.m{1}));
-    Res{i_scale}.sim.n=numel(Res{i_scale}.sim.xy);
-    if parm.cstk
-        if strcmp(parm.path,'linear')
-            if parm.path_random
-                Res{i_scale}.path = randperm(Res{i_scale}.sim.n);
-            else
-                Res{i_scale}.path = 1:Res{i_scale}.sim.n;
-            end
-        elseif  strcmp(parm.path,'spiralin') || strcmp(parm.path,'spiralout') || strcmp(parm.path,'maximize')
-            dist = Inf*ones(Res{i_scale}.sim.n,1);
-            X = Res{i_scale}.X(~isnan(Res{i_scale}.m{1}));
-            Y = Res{i_scale}.Y(~isnan(Res{i_scale}.m{1}));
-            for i_hard_data=1:numel(X)
-                dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-X(i_hard_data)).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Y(i_hard_data)).^2 );
-                dist = min(dist,dist_chall');
-            end
-            if  strcmp(parm.path,'spiralout')
-                if parm.path_random
-                    id_perm = randperm(numel(dist));
-                    dist_perm = dist(id_perm);
-                    [~,id_sort] = sort(dist_perm);
-                    Res{i_scale}.path = id_perm(id_sort);
-                else
-                    [~,Res{i_scale}.path] = sort(dist);
-                end
-            elseif strcmp(parm.path,'spiralin')
-                if parm.path_random
-                    [dist_perm,id_perm] = randperm(dist);
-                    [~,id_sort] = sort(dist_perm,'descend');
-                    Res{i_scale}.path = id_perm(id_sort);
-                else
-                    [~,Res{i_scale}.path] = sort(dist,'descend');
-                end
-            elseif strcmp(parm.path,'maximize')
-                Res{i_scale}.path = nan(Res{i_scale}.sim.n,1);
-                for i_pt = 1:Res{i_scale}.sim.n
-                    if parm.path_random && i_pt~=1
-                        m=max(dist);
-                        Res{i_scale}.path(i_pt) = datasample(find(m==dist),1); % randomize the selection in case of equal distence. (avoid a structural sampling)
-                    else
-                        [~,Res{i_scale}.path(i_pt)] = max(dist);
-                    end
-                    dist_chall = sqrt( (Res{i_scale}.X(Res{i_scale}.sim.xy)-Res{i_scale}.X(Res{i_scale}.sim.xy(Res{i_scale}.path(i_pt)))).^2 + (Res{i_scale}.Y(Res{i_scale}.sim.xy)-Res{i_scale}.Y(Res{i_scale}.sim.xy(Res{i_scale}.path(i_pt)))).^2 );
-                    dist = min(dist,dist_chall');
-                end
-            
-            end
-            clear dist dist_chall X Y m
-        elseif strcmp(parm.path,'quasirandom')
-            p = haltonset(ndims(grid{i_scale}.X));
-            Res{i_scale}.path =nan(Res{i_scale}.sim.n,1);
-            i=1; j=1;
-            while any(isnan(Res{i_scale}.path))
-                sub = floor(p(j,:).*[grid{i_scale}.nx grid{i_scale}.ny])+1;
-                ind = sub2ind([grid{i_scale}.nx grid{i_scale}.ny], sub(1), sub(2) );
-                if ~ismember(ind,Res{i_scale}.sim.xy(Res{i_scale}.path(1:i-1))) && ismember(ind,Res{i_scale}.sim.xy)
-                    Res{i_scale}.path(i) = find(Res{i_scale}.sim.xy==ind);
-                    i=i+1;
-                end
-                j=j+1;
-            end
-        elseif numel(parm.path) == Res{i_scale}.sim.n
-            parm.path = round(parm.path);
-            assert(all(sort(parm.path(:)) == (1:Res{i_scale}.sim.n)'),'not valid path')
-            Res{i_scale}.path = round(parm.path);
-        else
-            error('path method not define')
-            
-        end
-         
-        assert(numel(Res{i_scale}.path)==numel(unique(Res{i_scale}.path)),'not unique path')
-        Res{i_scale}.sim.xy_r=Res{i_scale}.sim.xy(Res{i_scale}.path); % randomly permutate the ordered vector of index of Y.xy
-        [Res{i_scale}.sim.y_r,Res{i_scale}.sim.x_r] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
-        
-    else
-        for i_realisation=1:parm.n_realisation
-            Res{i_scale}.sim.xy_r{i_realisation}=Res{i_scale}.sim.xy(randperm(Res{i_scale}.sim.n)); % randomly permutate the ordered vector of index of Y.xy
-            [Res{i_scale}.sim.y_r{i_realisation}, Res{i_scale}.sim.x_r{i_realisation}] = ind2sub([grid{i_scale}.ny, grid{i_scale}.nx],Res{i_scale}.sim.xy_r{i_realisation}); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
-        end
-    end
+    [Res{i_scale}.sim] = definepath(Res{i_scale},grid{i_scale},parm);
     
     
     %% * 1.4. *RANDOM NORMAL FIELD*
@@ -502,8 +416,9 @@ for i_scale=1:parm.n_scale % for each scale
     i_plot=0; % used for computing the number of point simulated. Used for ploting
     for i_pt=1:Res{i_scale}.sim.n; % loop over each point
         i_plot=i_plot+1;
-        %t.tic.pt = tic;
-            
+        pt.i=i_pt;
+        t.tic.pt = tic;
+        
         if parm.cstk % if option constant weight is activate.
             % Find the current point position on the grid{i_scale}. It
             % will be used on each realisation.
@@ -511,16 +426,15 @@ for i_scale=1:parm.n_scale % for each scale
             pt.y = Res{i_scale}.sim.y_r(i_pt);
             
             % Kriging system
-            %t.tic.krig = tic;
-            %[pt.krig, h_dist] = kriging(pt,Res{i_scale},Prim,k,parm,1);
-             [pt.krig] = kriging(pt,Res{i_scale},Prim,k,parm,1);
-             %t.toc.krig(i_pt) = toc(t.tic.krig);
+            t.tic.krig = tic;
+            pt.krig = kriging(pt,Res{i_scale},Prim,k,parm,1);
+            t.toc.krig = [t.toc.krig; toc(t.tic.krig)];
         end
         
         
         %% * 3. *Simulation of Realisation*
         for i_realisation=1:parm.n_realisation
-
+            
             
             if ~parm.cstk
                 % Find the current point position on the grid{i_scale}.
@@ -529,29 +443,21 @@ for i_scale=1:parm.n_scale % for each scale
                 pt.y = Res{i_scale}.sim.y_r{i_realisation}(i_pt);
                 
                 % Kriging h_hist
-                %t.tic.krig = tic;
-                %[pt.krig, h_dist] = kriging(pt,Res{i_scale},Prim,k,parm,i_realisation);
-                [pt.krig] = kriging(pt,Res{i_scale},Prim,k,parm,i_realisation);
-                %t.toc.krig(i_pt) = toc(t.tic.krig);
+                pt.krig = kriging(pt,Res{i_scale},Prim,k,parm,i_realisation);
+            end
+            
+            if ~isempty(pt.krig.mask.prim) || ~isempty(pt.krig.mask.res)
+             pt.krig.m = pt.krig.lambda'* [Prim.d_ns(pt.krig.mask.prim) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.mask.res)];
+            else % no neighbor
+                pt.krig.m=0; % mean ?
             end
             
             % add the count to covar
-            % Res{1}.dist = [Res{1}.dist ; h_dist i_pt*ones(numel(h_dist),1)];
-            % Res{1}.s = [Res{1}.s;pt.krig.s];
-            
-            if parm.neigh % if option smart neihbour is selected
-                % the weight(lambda) were computed earlier in kriging_coef.m,
-                % then the point are coming from the hard data (X.d_ns) and the
-                % previously simulated point R{i_scale}.m_ns.
-                pt.krig.m = pt.krig.lambda'* [Prim.d_ns(pt.krig.sb_mask) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.ss_mask)];
-            else
-                XY_ns = [Prim.d_ns; Res{i_scale}.m_ns{i_realisation}(~isnan(Res{i_scale}.m_ns{i_realisation}))];
-                pt.krig.m = pt.krig.lambda'* XY_ns(pt.krig.mask);
-            end
-            
-            if isempty(pt.krig.m)
-                %warning('Empty estimate. replace by 0')
-                pt.krig.m=0;
+            if parm.dist
+                % sel_g_ini=[Prim.x Prim.y; Res{i_scale}.X(~isnan(Res{i_scale}.m{i_realisation}(:))) Res{i_scale}.Y(~isnan(Res{i_scale}.m{i_realisation}(:)))];
+                % h_dist = pdist2([Res{i_scale}.x(pt.x) Res{i_scale}.y(pt.y)],sel_g_ini(pt.krig.mask,:))';
+                % Res{1}.dist = [Res{1}.dist ; h_dist i_pt*ones(numel(h_dist),1)];
+                Res{1}.s = [Res{1}.s;pt.krig.s];
             end
             
             %% * 3.1 *KRIGING DISTRIBUTION*
@@ -587,7 +493,7 @@ for i_scale=1:parm.n_scale % for each scale
                 hold on
                 h1=imagesc(Res{i_scale}.x,Res{i_scale}.y,Res{i_scale}.m_ns{1},'AlphaData',~isnan(Res{i_scale}.m_ns{1}));
                 
-                if parm.neigh
+                if strcmp(parm.k.method,'sbss')
                     sb_i = min([round((Res{i_scale}.y(pt.y)-k.sb.y(1))/k.sb.dy +1)'; k.sb.ny]);
                     sb_j = min([round((Res{i_scale}.x(pt.x) -k.sb.x(1))/k.sb.dx +1)'; k.sb.nx]);
                     windows=nan(k.sb.ny,k.sb.nx);
@@ -611,28 +517,21 @@ for i_scale=1:parm.n_scale % for each scale
                 h6=plot([Res{i_scale}.x(pt.x) Res{i_scale}.x(pt.x)],[min(y2) max(y2)],'-r');
                 h7=plot([min(x2) max(x2)], [Res{i_scale}.y(pt.y) Res{i_scale}.y(pt.y)],'-r');
                 
-                lambda_c= 36+60.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./range(abs(pt.krig.lambda));
+                lambda_c= 36+60.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./(range(abs(pt.krig.lambda))+eps); % eps avoid NaN
                 
                 h8=scatter(Prim.x,Prim.y,[],Prim.d_ns,'s','filled');
                 
-                if parm.neigh
-                    n_hd = numel(Prim.x(pt.krig.sb_mask));
-                    sel_g=[Prim.x(pt.krig.sb_mask) Prim.y(pt.krig.sb_mask); Res{i_scale}.X(pt.krig.ss_mask) Res{i_scale}.Y(pt.krig.ss_mask)];
-                    XY_ns = [Prim.d_ns(pt.krig.sb_mask) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.ss_mask)];
-                    h9=scatter(sel_g(1:n_hd,1),sel_g(1:n_hd,2),lambda_c(1:n_hd),XY_ns(1:n_hd),'s','filled','MarkerEdgeColor','k');
-                    h10=scatter(sel_g(n_hd+1:end,1),sel_g(n_hd+1:end,2),lambda_c(n_hd+1:end),XY_ns(n_hd+1:end),'o','filled','MarkerEdgeColor','k');
-                    h11=scatter(Res{i_scale}.x(pt.x),Res{i_scale}.y(pt.y),100,pt.krig.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5);
-                else
-                    XY_ns = [Prim.d_ns; Res{i_scale}.m_ns{1}(~isnan(Res{i_scale}.m_ns{1}))];
-                    sel_g_ini=[Prim.x Prim.y; Res{i_scale}.X(~isnan(Res{i_scale}.m{i_realisation})) Res{i_scale}.Y(~isnan(Res{i_scale}.m{i_realisation}))];
-                    sel_g = sel_g_ini(pt.krig.mask,:);
-                    scatter(sel_g(:,1),sel_g(:,2),lambda_c,XY_ns(pt.krig.mask),'o','filled','MarkerEdgeColor','k');
-                    scatter(Res{i_scale}.x(pt.x),Res{i_scale}.y(pt.y),100,pt.krig.lambda'* XY_ns(pt.krig.mask),'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
-                end
+                n_hd = numel(Prim.x(pt.krig.mask.prim));
+                sel=[Prim.x(pt.krig.mask.prim) Prim.y(pt.krig.mask.prim); Res{i_scale}.X(pt.krig.mask.res) Res{i_scale}.Y(pt.krig.mask.res)];
+                XY_ns = [Prim.d_ns(pt.krig.mask.prim) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.mask.res)];
+                h9=scatter(sel(1:n_hd,1),sel(1:n_hd,2),lambda_c(1:n_hd),XY_ns(1:n_hd),'s','filled','MarkerEdgeColor','k');
+                h10=scatter(sel(n_hd+1:end,1),sel(n_hd+1:end,2),lambda_c(n_hd+1:end),XY_ns(n_hd+1:end),'o','filled','MarkerEdgeColor','k');
+                h11=scatter(Res{i_scale}.x(pt.x),Res{i_scale}.y(pt.y),100,pt.krig.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5);
+                
                 xlabel('x[m]');ylabel('y[m]');
                 %colorbar;
-                xlim([Res{i_scale}.x(1) Res{i_scale}.x(end)])
-                ylim([Res{i_scale}.y(1) Res{i_scale}.y(end)])
+                xlim([Res{i_scale}.x(1)-grid{i_scale}.dx/2 Res{i_scale}.x(end)+grid{i_scale}.dx/2])
+                ylim([Res{i_scale}.y(1)-grid{i_scale}.dy/2 Res{i_scale}.y(end)+grid{i_scale}.dy/2])
                 %set(gca,'YDir','reverse');
                 
                 % legend([h3 h6 h8 h9 h10 h11],'Super grid','Window search with quadrant','Hard data point','Selected hard data point','Selected previously simulated point','Simulated Point','Location','northoutside','Orientation','horizontal')
@@ -657,26 +556,26 @@ for i_scale=1:parm.n_scale % for each scale
             
             if parm.plot.presentation && i_plot>1
                 c_axis=[-2 2];
-                figure(fig3); clf;  
+                figure(fig3); clf;
                 subplot(4,1,[1 3]); hold on;set(gca,'XTick',[]);set(gca,'YTick',[]);xlabel('X'); ylabel('Y'); box on; caxis(c_axis)
                 imagesc(grid{end}.x,grid{end}.y,Res{i_scale}.m_ns{1},'AlphaData',~isnan(Res{i_scale}.m_ns{1}));
                 test = [255, 255, 204;161, 218, 180;65, 182, 196;44, 127, 184;8, 104, 172;37, 52, 148]/255;
                 colormap([interp1(linspace(1,64,size(test,1)), test(:,1), 1:64)' interp1(linspace(1,64,size(test,1)), test(:,2), 1:64)' interp1(linspace(1,64,size(test,1)), test(:,3), 1:64)'])
                 mesh(.5+[-1 grid{end}.x],.5+[-1 grid{end}.y],zeros(grid{end}.nx+1,grid{end}.ny+1),'EdgeColor','k','facecolor','none','linewidth',1);axis equal tight
                 
-                 subplot(4,1,4); hold on;set(gca,'XTick',[]);set(gca,'YTick',[]); xlabel('Z'); ylabel('PDF(Z)'); xlim(c_axis); ylim([0 .3]);caxis(c_axis)
-                 lambda_c= 36+60.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./range(abs(pt.krig.lambda));
-                 lambda_w= eps+4.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./max(range(abs(pt.krig.lambda)),eps);
-                 lambda_w = lambda_w./sum(lambda_w);
-                 %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
-
-%                 subplot(4,1,4); hold on; xlabel('Simulation Node'); ylabel('Time of Kriging'); xlim([0 Res{i_scale}.sim.n]); ylim([0 5]);
-%                 plot(1:i_pt,t.toc.krig*1000)
-%                 scatter(1:i_pt,t.toc.krig*1000,'ok','filled')
-%                 Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                subplot(4,1,4); hold on;set(gca,'XTick',[]);set(gca,'YTick',[]); xlabel('Z'); ylabel('PDF(Z)'); xlim(c_axis); ylim([0 .3]);caxis(c_axis)
+                lambda_c= 36+60.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./range(abs(pt.krig.lambda));
+                lambda_w= eps+4.*(abs(pt.krig.lambda)-min(abs(pt.krig.lambda)))./max(range(abs(pt.krig.lambda)),eps);
+                lambda_w = lambda_w./sum(lambda_w);
+                %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
+                
+                %                 subplot(4,1,4); hold on; xlabel('Simulation Node'); ylabel('Time of Kriging'); xlim([0 Res{i_scale}.sim.n]); ylim([0 5]);
+                %                 plot(1:i_pt,t.toc.krig*1000)
+                %                 scatter(1:i_pt,t.toc.krig*1000,'ok','filled')
+                %                 Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
                 
                 
-                subplot(4,1,[1 3]); 
+                subplot(4,1,[1 3]);
                 mesh(pt.x+[-1.5 -.5],pt.y+[-1.5 -.5],zeros(2),'EdgeColor','r','facecolor','none','LineWidth',2);
                 
                 %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
@@ -692,7 +591,7 @@ for i_scale=1:parm.n_scale % for each scale
                 
                 %Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
                 
-                subplot(4,1,4); 
+                subplot(4,1,4);
                 XY_ns = [Prim.d_ns; Res{i_scale}.m_ns{1}(~isnan(Res{i_scale}.m_ns{1}))];
                 scatter(XY_ns(pt.krig.mask),zeros(numel(pt.krig.mask),1),lambda_c,XY_ns(pt.krig.mask),'o','filled')
                 
@@ -706,29 +605,20 @@ for i_scale=1:parm.n_scale % for each scale
                 plot([pt.sampled pt.sampled],[0 interp1(parm.support_dist,pt.krig.pdf,pt.sampled)],'r','LineWidth',2)
                 scatter(pt.sampled,interp1(parm.support_dist,pt.krig.pdf,pt.sampled),[],pt.sampled,'o','filled')
                 Res{end}.F(i_frame) = getframe(fig3);i_frame=i_frame+1;
-
-
+                
+                
                 
             end
             
-                    
+            
             %% 3.5 Compute the empirical var-covariance matrix (Emery & Pelaez, 2011)
             if parm.varcovar && i_realisation==parm.n_realisation
                 pt_id = find(Res{i_scale}.y(pt.y)==grid{parm.n_scale}.Y&Res{i_scale}.x(pt.x)==grid{parm.n_scale}.X);
                 
-                if parm.neigh % if option smart neihbour is selected
-                    Res{end}.lambda(pt_id, [Prim.varcovar(pt.krig.sb_mask); Res{i_scale}.varcovar_id(pt.krig.ss_mask)]) = -pt.krig.lambda./sqrt(pt.krig.s);
-                    Res{end}.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
-                else % compute only the last realization
-                    XY_id = [Prim.varcovar; Res{i_scale}.varcovar_id(~isnan(Res{i_scale}.m{i_realisation}))];
-                    Res{end}.lambda(pt_id,XY_id(pt.krig.mask)) = -pt.krig.lambda./sqrt(pt.krig.s);
-                    Res{end}.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
-                    clear XY_id
-                end
-                clear pt_id
+                Res{end}.lambda(pt_id, [Prim.varcovar(pt.krig.mask.prim); Res{i_scale}.varcovar_id(pt.krig.mask.res)]) = -pt.krig.lambda./sqrt(pt.krig.s);
+                Res{end}.lambda(pt_id,pt_id) = 1/sqrt(pt.krig.s);
             end
             
-            %Res{end}.s(i_pt)=sqrt(pt.krig.s);
             
             %% 3.6 *Back transform*
             Res{i_scale}.m{i_realisation}(pt.y,pt.x) = pt.sampled;
@@ -736,14 +626,15 @@ for i_scale=1:parm.n_scale % for each scale
         end
         % NOTHING SHOULD BE DONE AFTER THAT WHICH INVOLVED THE WEIGHT
         % BECAUSE WE CHANGED RES.M...
-        % t.toc.pt(i_pt)=toc(t.tic.pt);
+        t.toc.pt=[t.toc.pt; toc(t.tic.pt)];
     end
-
+    
     % display info
     % disp(['Simulation ' num2str(i_scale) '/' num2str(parm.n_scale) ' finished in : ' num2str(toc(t.tic.scale))])
-    t_scale(i_scale) = toc(t.tic.scale);
+    t.toc.scale = [t.toc.scale; toc(t.tic.scale)];
     
-
+    
 end
+t_out = t.toc;
 
 end

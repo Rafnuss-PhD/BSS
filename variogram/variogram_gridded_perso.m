@@ -1,6 +1,7 @@
 function [gamma_x, gamma_y] = variogram_gridded_perso(X)
 
-X=(X-mean(X(:)))./std(X(:));
+
+% X=(X-mean(X(:)))./std(X(:));
 
 [ny,nx] = size(X);
 gamma_x=nan(nx,1);

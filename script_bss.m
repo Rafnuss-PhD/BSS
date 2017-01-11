@@ -27,7 +27,7 @@ dbstop if error  % activate debug in error
 % store the parameter and |data_generation.m| compute everything
 
 % Grid size
-gen.xmax = 240; %total length in unit [m]
+gen.xmax = 200; %total length in unit [m]
 gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
@@ -45,8 +45,11 @@ gen.method              = 'fromRho';
 % Generation parameter
 gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 4;          % number of well or number of point
-gen.covar.modele        = [4 27 2.7 0; 1 1 1 0]; % covariance structure
-gen.covar.c             = [0.99; 0.01]; 
+gen.covar(1).model      = 'spherical';
+gen.covar(1).range0     = [15 4];
+gen.covar(1).azimuth    = 0;
+gen.covar(1).c0         = 1;
+gen.covar               = kriginginitiaite(gen.covar);
 gen.mu                  = 0.27; % parameter of the first field. 
 gen.std                 = .05;
 gen.Rho.method          = 'R2'; % 'Paolo' (default for gen.method Paolo), 'noise', 'RESINV3D'
@@ -62,8 +65,8 @@ gen.Rho.dmin.tolerance    = 10;
 % Other parameter
 gen.plotit              = false;      % display graphic or not (you can still display later with |script_plot.m|)
 gen.saveit              = true;       % save the generated file or not, this will be turn off if mehod Paolo or filename are selected
-gen.name                = 'SimilarToPaolo-new';
-gen.seed                = 123456;
+gen.name                = 'test';
+gen.seed                = 'default';
 
 % Run the function
 data_generation(gen);
@@ -74,39 +77,22 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
-load('data_gen/data/GEN-SimilarToPaolo-new_2016-03-04_11-25');
-parm.gen=gen;
+load('result-BSS/GEN-test_2017-01-11_10-59');
 
-parm.n_realisation  = 1;
+parm.k.covar = gen.covar;
+
+parm.nscore = 0;
 parm.par = 0;
+parm.n_realisation  = 1;
+parm.cstk = true;
+parm.seed = 'shuffle';
+parm.scale=[grid_gen.sx;grid_gen.sy]; % no multigrid
+parm.saveit = false;
+parm.k.method = 'sort'; % sort, sbss or smart minkmex
+parm.k.quad = 0;
+parm.k.wradius = Inf;
 
-% parm.p_w = [0.5 0];   
-%parm.plot.krig =1;
-% 
-% parm.fitvar         = 0;
-% 
-% parm.seed           = rand();
-% parm.neigh          = true;
-% parm.cstk           = false;
-% parm.nscore         = true;
-% parm.unit           = 'Electrical Conductivitiy';
-% 
-% % Saving
-% parm.saveit         = true;
-% parm.name           = gen.name;
-% 
-% % Ploting
-% parm.plot.bsgs      = 0;
-% parm.plot.ns        = 0;
-% parm.plot.sb        = 0;
-% parm.plot.kernel    = 0;
-% parm.plot.fitvar    = 0;
-parm.plot.krig      = 1;
-% 
-% parm.k.range.min = [min(sigma.d(:))-2 min(Sigma.d(:))-2];
-% parm.k.range.max = [max(sigma.d(:))+2 max(Sigma.d(:))+2];
-
-[Y, t, kernel, k,filename] = BSGS_par(sigma,Sigma,sigma_true,grid_gen,parm);
+BSGS(sigma,Sigma,grid_gen,parm);
 
 
 

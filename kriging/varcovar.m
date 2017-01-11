@@ -91,35 +91,33 @@ if vario
         
     end
     
-    ny=Res{end}.ny;
-    nx=Res{end}.nx;
-    nxy=Res{end}.nxy;
-
-    % create the 3D matrix of variogram. 
-    vario=cell(3,1);
-    vario{3} = nan(ny*2-1,nx*2-1,nxy);
-    for i=1:nxy
-        [id_y,id_x]=ind2sub([ny,nx],i);
-        vario{3}( (ny-id_y)+(1:ny) , (nx-id_x)+(1:nx),i) = reshape(full(CY_t(i,:)),ny,nx);
-    end
-    vario{2} = nanmean(vario{3},3);
-
-%     vario{2} = zeros(ny*2-1,nx*2-1);
-%     vario_2_weight = zeros(ny*2-1,nx*2-1);
+%     ny=Res{end}.ny;
+%     nx=Res{end}.nx;
+%     nxy=Res{end}.nxy;
+% 
+%     % create the 3D matrix of variogram. 
+%     vario=cell(3,1);
+%     vario{3} = nan(ny*2-1,nx*2-1,nxy);
 %     for i=1:nxy
 %         [id_y,id_x]=ind2sub([ny,nx],i);
-%         vario{2}( (ny-id_y)+(1:ny) , (nx-id_x)+(1:nx)) = reshape(CY_t(i,:),ny,nx) + vario{2}( (ny-id_y)+(1:ny) , (nx-id_x)+(1:nx));
-%         vario_2_weight( (ny-id_y)+(1:ny) , (nx-id_x)+(1:nx)) = vario_2_weight( (ny-id_y)+(1:ny) , (nx-id_x)+(1:nx)) +1;
+%         vario{3}( (ny-id_y)+(1:ny) , (nx-id_x)+(1:nx),i) = reshape(full(CY_t(i,:)),ny,nx);
 %     end
-%     
-%     vario{2}= vario{2} ./ vario_2_weight;
-    
-    
-    
-    vario{1}.h = [ vario{2}(ny,nx), nanmean( [vario{2}(ny,nx-1:-1:1); vario{2}(ny,nx+1:end)])];
-    vario{1}.v = [ vario{2}(ny,nx), nanmean( [vario{2}(ny-1:-1:1,nx)'; vario{2}(ny+1:end,nx)'])];
-    
-    %vario{3} = [];
+%     vario{2} = nanmean(vario{3},3);
+% 
+%  
+%     vario{1}.h = [ vario{2}(ny,nx), nanmean( [vario{2}(ny,nx-1:-1:1); vario{2}(ny,nx+1:end)])];
+%     vario{1}.v = [ vario{2}(ny,nx), nanmean( [vario{2}(ny-1:-1:1,nx)'; vario{2}(ny+1:end,nx)'])];
+
+    D = pdist2([Res{end}.X(:) Res{end}.Y(:)],[Res{end}.X(:) Res{end}.Y(:)]);
+    vario=struct;
+    vario.h= unique(D);
+    for i=1:numel(vario.h)
+        id = D==vario.h(i);
+        id2 = CY_t(id);
+        vario.g_n(i) = sum(id(:));
+        vario.g(i) = sum(id2)/vario.g_n(i);
+        vario.std(i) = sqrt(  sum((id2(:)-vario.g(i)).^2) / (vario.g_n(i)-1)  );
+    end
     
     varargout{5} = vario;
 end

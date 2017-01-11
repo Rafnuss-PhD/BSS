@@ -26,8 +26,10 @@ k.sb.dy=k.sb.y(2)-k.sb.y(1);
 k.sb.y=k.sb.y(1:end-1)+k.sb.dy/2;
 
 % Creation of the superblock grid windows search
-[el_X, el_Y] = meshgrid(0:max(ceil(k.range(1)*k.wradius/k.sb.dx),ceil(k.range(2)*k.wradius/k.sb.dy)));% grid of searching windows in supergrid unit. this is a quadrant
-[el_X_T, el_Y_T]=rotredtrans(el_X*k.sb.dx, el_Y*k.sb.dy, k.rotation, k.range); % transforms the grid in unit
+
+el_max = ceil(max(min([k.covar(1).range*k.wradius; xmax ymax])./[k.sb.dx k.sb.dy]));
+[el_X, el_Y] = meshgrid(0:el_max);% grid of searching windows in supergrid unit. this is a quadrant
+[el_X_T, el_Y_T]=rotredtrans(el_X*k.sb.dx, el_Y*k.sb.dy, k.covar(1).azimuth, k.covar(1).range); % transforms the grid in unit
 el_dist = sqrt(el_X_T.^2 + el_Y_T.^2); % distence from the point 0,0
 [~,id_sort] = sort(el_dist);
 k.el_X_s=el_X(el_dist<k.wradius); 
