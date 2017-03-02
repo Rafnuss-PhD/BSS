@@ -15,7 +15,7 @@ if strcmp(krig.method,'sbss')
     % 1. Super Grid Block from Hard Data:
     sb_j = min([round((Res.y(pt.y)-krig.sb.y(1))/krig.sb.dy +1)'; krig.sb.ny]);
     sb_i = min([round((Res.x(pt.x) -krig.sb.x(1))/krig.sb.dx +1)'; krig.sb.nx]);
-    mask.prim_all = reshape(krig.sb.mask(sb_j,sb_i,:),Prim.n,1);
+    mask.prim_all = reshape(krig.sb.mask(sb_j,sb_i,:),size(krig.sb.mask,3),1);
     
     [~,sb_id] = sort( sqrt( ( (Prim.x(mask.prim_all)-Res.x(pt.x))./krig.covar(1).range(1) ).^2 + ( (Prim.y(mask.prim_all)-Res.y(pt.y))./krig.covar(1).range(2) ).^2 ) );
     mask.prim_all_id = find(mask.prim_all);
@@ -66,12 +66,12 @@ if strcmp(krig.method,'sbss')
 
     
 elseif strcmp(krig.method,'sort')
-    mask.res = Res.sim.xy_r(1:pt.i-1);
-    sel_g_ini=[Prim.x Prim.y; Res.sim.x_r(1:pt.i-1)  Res.sim.y_r(1:pt.i-1)];
+    mask.res = Res.sim.xy_r{i_realisation}(1:pt.i-1);
+    sel_g_ini=[ [Prim.x Prim.y]; [Res.x(Res.sim.x_r{i_realisation}(1:pt.i-1))  Res.y(Res.sim.y_r{i_realisation}(1:pt.i-1))]];
     % Just remove point outside search radius and keep
     % This is identical (more or less) to cokri_cam (sort and selection)
     center = [Res.x(pt.x) Res.y(pt.y)];
-    dist = sqrt(((sel_g_ini(:,1)-center(1))/krig.covar(1).range(1)).^2 + ((sel_g_ini(:,2)-center(2))/krig.covar(1).range(2)).^2);
+    dist = sqrt( ((sel_g_ini(:,1)-center(1))/krig.covar(1).range(1)).^2 + ((sel_g_ini(:,2)-center(2))/krig.covar(1).range(2)).^2 );
     [dist_s, idx_s] = sort(dist);
     
     if krig.quad
@@ -126,11 +126,11 @@ elseif strcmp(krig.method,'sort')
 
 elseif strcmp(krig.method,'minkmex')
     
-    mask.res = Res.sim.xy_r(1:pt.i-1);
-    sel_g_ini=[Prim.x Prim.y; Res.sim.x_r(1:pt.i-1)  Res.sim.y_r(1:pt.i-1)];
+    mask.res = Res.sim.xy_r{i_realisation}(1:pt.i-1);
+    sel_g_ini=[ [Prim.x Prim.y]; [Res.x(Res.sim.x_r{i_realisation}(1:pt.i-1))  Res.y(Res.sim.y_r{i_realisation}(1:pt.i-1))]];
 
     center = [Res.x(pt.x) Res.y(pt.y)];
-    dist = sqrt(((sel_g_ini(:,1)-center(1))/krig.covar(1).range(1)).^2 + ((sel_g_ini(:,2)-center(2))/krig.covar(1).range(2)).^2);
+    dist = sqrt( ((sel_g_ini(:,1)-center(1))/krig.covar(1).range(1)).^2 + ((sel_g_ini(:,2)-center(2))/krig.covar(1).range(2)).^2 );
 
     mask.all = find(dist <= krig.wradius);
     % idx = partial_sort_index(dist(mask.all), sum(krig.nb(2,:)));
@@ -143,9 +143,3 @@ elseif strcmp(krig.method,'minkmex')
 else
     error(['Not possible neigh search method: ' krig.method ' (smart,sbss,nearest)'])
 end
-
-
-
-% Checking
-%assert((size(unique(sel_g,'rows'),1)==size(sel_g,1)), 'None unique point for kriging: ')
-%assert(size(sel_g,1)>1, 'Not enough point for kriging: ')

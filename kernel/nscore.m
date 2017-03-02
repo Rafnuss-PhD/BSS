@@ -1,3 +1,6 @@
+
+
+
 %% NSCORE_PERSO
 % This function is computing the Normal zscore transform of the input
 % vector the function return two fonction handle : one for the normal transform
@@ -21,7 +24,7 @@ function Nscore = nscore(X,support_dist,method,extrapolationMethod,plotit)
 % Compute the empirical cdf
 [ft,xt] = ecdf(X);
 
-% ecdf compute the step function like because it is empirical, and there is
+% ecdf compute the step function because it is empirical, and there is
 % one step per value of X (the height of the step is constent). The real
 % pdf of this variable is something (no exacly, but closer) to a linear
 % extrapolation between the center of the step. In order to get these
@@ -46,8 +49,7 @@ f = (ft(1:end-1)+ft(2:end))/2;
 % kernel and the first point of the ecdf, then use the point of the kernel
 % as ...
 
-warning('Implement Hermite Polynomial: PCHIP (see course of Fontainebleau)')
-pause;
+
 
 
 dx=min([10; numel(X)]); % number of point to take in the interpolation:

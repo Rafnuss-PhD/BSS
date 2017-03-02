@@ -40,7 +40,7 @@ gen.sy = 5;
 % 'LogNormal'   
 % 'fromRho':            log transform it with the parameter defined below 
 % 'fromK':              generate with FFTMA a field of Hyraulic conductivity and log transform it with the parameter defined below 
-gen.method              = 'fromRho';
+gen.method              = 'fromPhi';
 
 % Generation parameter
 gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
@@ -77,25 +77,35 @@ data_generation(gen);
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
 % scarse electrical  data (sigma) and large scale inverted ERt (Sigma).
+clear all; close all
 load('result-BSS/GEN-test_2017-01-11_10-59');
 
 parm.k.covar = gen.covar;
 
-parm.nscore = 0;
+parm.unit='';
+parm.nscore = 1;
 parm.par = 0;
-parm.n_realisation  = 1;
+parm.n_realisation  = 5;
 parm.cstk = true;
 parm.seed = 'shuffle';
 parm.scale=[grid_gen.sx;grid_gen.sy]; % no multigrid
 parm.saveit = false;
-parm.k.method = 'sort'; % sort, sbss or smart minkmex
+parm.k.method = 'sbss'; % sort, sbss (29.6) or smart minkmex
 parm.k.quad = 0;
-parm.k.wradius = Inf;
+parm.k.wradius = 1.3;
+parm.plot.kernel=0;
+parm.plot.ns= 0;
 
-BSGS(sigma,Sigma,grid_gen,parm);
+parm.plot.krig=0;
+% use the log of hyd. cond.
+Klog=K;
+Klog.d=log(Klog.d);
+
+% work on the weight
+parm.aggr.fx = @(parm,grid,i_scale,i_pt) 1;
 
 
-
+[Res, t, kern] = BSGS(Klog,Sigma,grid_gen,parm);
 
 %% Plot
 

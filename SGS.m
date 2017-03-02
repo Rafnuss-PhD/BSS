@@ -379,17 +379,6 @@ for i_scale=1:parm.n_scale % for each scale
         [k.ss.el.dist_s, k.ss.el.dist_idx] = sort(k.ss.el.dist(:)); % sort according distence.
         k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); % sort the axis
         k.ss.el.Y_s=k.ss.el.Y(k.ss.el.dist_idx);
-        
-%         ss_id = bsxfun(@ge,k.ss.el.X_s,abs(k.qs2(:,1))') & bsxfun(@ge,k.ss.el.Y_s,abs(k.qs2(:,2))');
-%         k.ss.el.X_f=zeros(sum(ss_id(:,1)),4);
-%         k.ss.el.Y_f=k.ss.el.X_f;
-%         k.ss.el.dist_f=k.ss.el.X_f;
-%         
-%         for q=1:4
-%             k.ss.el.X_f(:,q) = k.qs(q,1) * k.ss.el.X_s(ss_id(:,q));
-%             k.ss.el.Y_f(:,q) = k.qs(q,2) * k.ss.el.Y_s(ss_id(:,q));
-%             k.ss.el.dist_f(:,q) = k.ss.el.dist_s(ss_id(:,q));
-%         end
     end
     
     
@@ -422,8 +411,8 @@ for i_scale=1:parm.n_scale % for each scale
         if parm.cstk % if option constant weight is activate.
             % Find the current point position on the grid{i_scale}. It
             % will be used on each realisation.
-            pt.x = Res{i_scale}.sim.x_r(i_pt);
-            pt.y = Res{i_scale}.sim.y_r(i_pt);
+            pt.x = Res{i_scale}.sim.x_r{1}(i_pt);
+            pt.y = Res{i_scale}.sim.y_r{1}(i_pt);
             
             % Kriging system
             t.tic.krig = tic;

@@ -4,8 +4,8 @@ Sim.n=numel(Sim.xy);
 
 if parm.cstk
     Sim.path = definepath_in(Res,grid,parm,Sim);
-    Sim.xy_r=Sim.xy(Sim.path);
-    [Sim.y_r,Sim.x_r] = ind2sub([grid.ny, grid.nx],Sim.xy_r); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
+    Sim.xy_r{1}=Sim.xy(Sim.path);
+    [Sim.y_r{1},Sim.x_r{1}] = ind2sub([grid.ny, grid.nx],Sim.xy_r{1}); % * ind2sub() is taking linearized matrix index (i) and transform matrix index (i,j). We insert the randomized path of this specific simulation (ns) in Y.x and Y.y after the already known data of the primary data
 else
     for i_realisation=1:parm.n_realisation
         Sim.path{i_realisation} = definepath_in(Res,grid,parm,Sim);

@@ -59,7 +59,7 @@
 % Referances:
 %
 
-function [Res, t, kern, k, parm, filename] = BSGS(Prim,Sec,grid_gen,parm)
+function [Res, t, kern, k, parm, Nscore, filename] = BSGS(Prim,Sec,grid_gen,parm)
 t.global = tic;
 addpath(genpath('./.'))
 
@@ -127,7 +127,7 @@ if ~isfield(parm, 'k') || ~isfield(parm.k, 'method'),  parm.k.method = 'smart'; 
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'quad'),  parm.k.quad = 0; end
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'nb'),  parm.k.nb = [0 0 0 0 0; 5 5 5 5 5]; end
 
-if ~isfield(parm, 'k') || ~isfield(parm.k, 'sb') || ~isfield(parm.k.sb, 'nx') || ~isfield(parm.k.sb, 'ny') % super-block grid size (hard data)
+if strcmp(parm.k.method,'sbss') && ~isfield(parm, 'k') || ~isfield(parm.k, 'sb') || ~isfield(parm.k.sb, 'nx') || ~isfield(parm.k.sb, 'ny') % super-block grid size (hard data)
     parm.k.sb.nx    = ceil(grid_gen.x(end)/parm.k.covar(1).range(1)*3);
     parm.k.sb.ny    = ceil(grid_gen.y(end)/parm.k.covar(1).range(2)*3);
 end
@@ -175,9 +175,9 @@ for i_scale = 1:parm.n_scale
     grid{i_scale}.dx=grid_gen.x(end)/(grid{i_scale}.nx-1);
     grid{i_scale}.dy=grid_gen.y(end)/(grid{i_scale}.ny-1);
     
-    grid{i_scale}.x=linspace(0, grid_gen.x(end), grid{i_scale}.nx); % coordinate of cells center
-    grid{i_scale}.y=linspace(0, grid_gen.y(end), grid{i_scale}.ny);
-    grid{i_scale}.xy=1:grid{i_scale}.nxy;
+    grid{i_scale}.x=linspace(0, grid_gen.x(end), grid{i_scale}.nx)'; % coordinate of cells center
+    grid{i_scale}.y=linspace(0, grid_gen.y(end), grid{i_scale}.ny)';
+    grid{i_scale}.xy=(1:grid{i_scale}.nxy)';
     
     [grid{i_scale}.X, grid{i_scale}.Y] = meshgrid(grid{i_scale}.x,grid{i_scale}.y); % matrix coordinate
 end
@@ -192,9 +192,8 @@ end
 if strcmp(parm.k.method,'sbss')
     k.sb.nx = parm.k.sb.nx; % number of superblock grid
     k.sb.ny = parm.k.sb.ny;
-    [k, Prim] = SuperBlockGridCreation(k, grid_gen.x(end), grid_gen.y(end), Prim, parm.plot.sb, parm.k.nb_neigh(2,5));
+    [k, Prim] = SuperBlockGridCreation(k, grid_gen.x(end), grid_gen.y(end), Prim, parm.plot.sb, parm.k.nb(2,5));
 end
-
 
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
 % The joint pdf of the primary and secondary is build using a bivariate
@@ -218,7 +217,7 @@ end
 % (return the pdf in the initial space from the mean and variance in the
 % normal space)
 if parm.nscore && Prim.n~=0
-    Nscore = nscore(Prim.d, kern.axis_prim, 'linear', 'linear', parm.plot.ns);
+    Nscore = nscore(Prim.d, kern.axis_prim, 'pchip', 'pchip', parm.plot.ns);
 else
     Nscore.forward = @(x) x';
     Nscore.inverse = @(x) x';
@@ -227,6 +226,8 @@ end
 
 % Create the normal space primary variable of known data
 Prim.d_ns = Nscore.forward(Prim.d);
+
+
 
 
 
@@ -341,13 +342,7 @@ for i_scale=1:parm.n_scale % for each scale
         end
     end
     
-    % Remove the assimilated data from X.
-    Prim.d(hard_data_idx)=[];
-    Prim.x(hard_data_idx)=[];
-    Prim.y(hard_data_idx)=[];
-    Prim.d_ns(hard_data_idx)=[];
     if strcmp(parm.k.method,'sbss'); k.sb.mask(:,:,hard_data_idx)=[]; end
-    Prim.n=numel(Prim.d);
     
     % Create the normal space result matrix and populate with known value
     Res{i_scale}.m_ns = repmat({nan(size(Res{i_scale}.m{1}))},parm.n_realisation,1);
@@ -361,9 +356,12 @@ for i_scale=1:parm.n_scale % for each scale
     % Create the windows for kringing with the function to compute the
     % normalized distence and the order of visit of the cells. Spiral
     % Search setting: previously data (on grid{i_scale} location)
+    
     if strcmp(parm.k.method,'sbss')
-        [k.ss.el.X, k.ss.el.Y] = meshgrid(0:max(ceil(k.range(1)*k.wradius/grid{i_scale}.dx),ceil(k.range(2)*k.wradius/grid{i_scale}.dy)));% grid{i_scale} of searching windows
-        [k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid{i_scale}.dx, k.ss.el.Y*grid{i_scale}.dy, k.rotation, k.range); % transforms the grid{i_scale}
+        k.ss.el.dw = ceil(min(max(k.covar(1).range*k.wradius./[grid{i_scale}.dx grid{i_scale}.dy]), max(grid{i_scale}.nx,grid{i_scale}.ny)));
+        
+        [k.ss.el.X, k.ss.el.Y] = meshgrid(-k.ss.el.dw:k.ss.el.dw);% grid{i_scale} of searching windows
+        [k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid{i_scale}.dx, k.ss.el.Y*grid{i_scale}.dy, k.covar(1).azimuth, k.covar(1).range); % transforms the grid{i_scale}
         k.ss.el.dist = sqrt(k.ss.el.X_T.^2 + k.ss.el.Y_T.^2); % find distence
         [k.ss.el.dist_s, k.ss.el.dist_idx] = sort(k.ss.el.dist(:)); % sort according distence.
         k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); % sort the axis
@@ -399,8 +397,8 @@ for i_scale=1:parm.n_scale % for each scale
         if parm.cstk % if option constant weight is activate.
             % Find the current point position on the grid{i_scale}. It
             % will be used on each realisation.
-            pt.x = Res{i_scale}.sim.x_r(i_pt);
-            pt.y = Res{i_scale}.sim.y_r(i_pt);
+            pt.x = Res{i_scale}.sim.x_r{1}(i_pt);
+            pt.y = Res{i_scale}.sim.y_r{1}(i_pt);
             
             % Kriging system
             pt.krig = kriging(pt,Res{i_scale},Prim,k,parm,1);
@@ -447,7 +445,7 @@ for i_scale=1:parm.n_scale % for each scale
             end
             
             if ~isempty(pt.krig.mask.prim) || ~isempty(pt.krig.mask.res)
-             pt.krig.m = pt.krig.lambda'* [Prim.d_ns(pt.krig.mask.prim) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.mask.res)];
+                pt.krig.m = pt.krig.lambda'* [Prim.d_ns(pt.krig.mask.prim) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.mask.res)];
             else % no neighbor
                 pt.krig.m=0; % mean ?
             end
@@ -466,7 +464,7 @@ for i_scale=1:parm.n_scale % for each scale
             %pt.sec.pdf(pt.sec.pdf==0)=eps; % if sec and krig don't have overlaps, put eps.
             %pt.krig.pdf(pt.krig.pdf==0)=eps;
             % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
-            pt.aggr.pdf = pt.sec.pdf.^(1-parm.w_krig(i_scale/parm.n_scale)) .* pt.krig.pdf.^parm.w_krig(i_scale/parm.n_scale);
+            pt.aggr.pdf = pt.sec.pdf.^(1-parm.aggr.fx(parm,grid,i_scale,i_pt)) .* pt.krig.pdf.^parm.aggr.fx(parm,grid,i_scale,i_pt);
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -483,7 +481,7 @@ for i_scale=1:parm.n_scale % for each scale
                 assert(all(diff(pt.aggr.cdf)>0))
             end
             
-            pt.sampled = interp1(pt.aggr.cdf, kern.axis_prim, U(i_pt,i_realisation),'pchip');
+            pt.sampled = interp1(pt.aggr.cdf, kern.axis_prim, Res{end}.U(i_pt,i_realisation),'pchip');
             
             
             %% * 3.4 *PLOTIT*
@@ -494,24 +492,24 @@ for i_scale=1:parm.n_scale % for each scale
                 hold on
                 h1=imagesc(Res{i_scale}.x,Res{i_scale}.y,Res{i_scale}.m_ns{1},'AlphaData',~isnan(Res{i_scale}.m_ns{1}));
                 
-                sb_i = min([round((Res{i_scale}.y(pt.y)-k.sb.y(1))/k.sb.dy +1)'; k.sb.ny]);
-                sb_j = min([round((Res{i_scale}.x(pt.x) -k.sb.x(1))/k.sb.dx +1)'; k.sb.nx]);
-                windows=nan(k.sb.ny,k.sb.nx);
-                for u=1:length(k.el_X_s) %.. look at all point...
-                    for q=1:4 %... and assign it to the corresponding quadrant
-                        if sb_i+k.qs(q,1)*k.el_X_s(u)<=k.sb.nx && sb_j+k.qs(q,2)*k.el_Y_s(u)<=k.sb.ny && sb_i+k.qs(q,1)*k.el_X_s(u)>=1 && sb_j+k.qs(q,2)*k.el_Y_s(u)>=1% check to be inside the grid
-                            windows(sb_i+k.qs(q,1)*k.el_X_s(u), sb_j+k.qs(q,2)*k.el_Y_s(u))=1;
+                if strcmp(parm.k.method,'sbss');
+                    sb_i = min([round((Res{i_scale}.y(pt.y)-k.sb.y(1))/k.sb.dy +1)'; k.sb.ny]);
+                    sb_j = min([round((Res{i_scale}.x(pt.x) -k.sb.x(1))/k.sb.dx +1)'; k.sb.nx]);
+                    windows=nan(k.sb.ny,k.sb.nx);
+                    for u=1:length(k.el_X) %.. look at all point...
+                        if sb_i+k.el_X(u)<=k.sb.nx && sb_j+k.el_Y(u)<=k.sb.ny && sb_i+k.el_X(u)>=1 && sb_j+k.el_Y(u)>=1% check to be inside the grid
+                            windows(sb_i+k.el_X(u), sb_j+k.el_Y(u))=1;
                         end
                     end
+                    h2=imagesc(k.sb.x,k.sb.y,windows,'AlphaData',windows*.5);
+                    h3=mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.ny+1, k.sb.nx+1),'EdgeColor','k','facecolor','none');
                 end
-                h2=imagesc(k.sb.x,k.sb.y,windows,'AlphaData',windows*.5);
-                h3=mesh([0 k.sb.x+k.sb.dx/2],[0 k.sb.y+k.sb.dy/2],zeros(k.sb.ny+1, k.sb.nx+1),'EdgeColor','k','facecolor','none');
                 
                 tt=-pi:0.01:pi;
-                x=Res{i_scale}.x(pt.x)+k.range(1)*cos(tt);
-                x2=Res{i_scale}.x(pt.x)+k.wradius*k.range(1)*cos(tt);
-                y=Res{i_scale}.y(pt.y)+k.range(2)*sin(tt);
-                y2=Res{i_scale}.y(pt.y)+k.wradius*k.range(2)*sin(tt);
+                x=Res{i_scale}.x(pt.x)+k.covar.range(1)*cos(tt);
+                x2=Res{i_scale}.x(pt.x)+k.wradius*k.covar.range(1)*cos(tt);
+                y=Res{i_scale}.y(pt.y)+k.covar.range(2)*sin(tt);
+                y2=Res{i_scale}.y(pt.y)+k.wradius*k.covar.range(2)*sin(tt);
                 h4=plot(x,y,'--r'); h5=plot(x2,y2,'-r');
                 h6=plot([Res{i_scale}.x(pt.x) Res{i_scale}.x(pt.x)],[min(y2) max(y2)],'-r');
                 h7=plot([min(x2) max(x2)], [Res{i_scale}.y(pt.y) Res{i_scale}.y(pt.y)],'-r');
@@ -520,20 +518,13 @@ for i_scale=1:parm.n_scale % for each scale
                 
                 h8=scatter(Prim.x,Prim.y,[],Prim.d_ns,'s','filled');
                 
-                if parm.cstk
-                    n_hd = numel(Prim.x(pt.krig.sb_mask));
-                    sel_g=[Prim.x(pt.krig.sb_mask) Prim.y(pt.krig.sb_mask); Res{i_scale}.X(pt.krig.ss_mask) Res{i_scale}.Y(pt.krig.ss_mask)];
-                    XY_ns = [Prim.d_ns(pt.krig.sb_mask) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.ss_mask)];
-                    h9=scatter(sel_g(1:n_hd,1),sel_g(1:n_hd,2),lambda_c(1:n_hd),XY_ns(1:n_hd),'s','filled','MarkerEdgeColor','k');
-                    h10=scatter(sel_g(n_hd+1:end,1),sel_g(n_hd+1:end,2),lambda_c(n_hd+1:end),XY_ns(n_hd+1:end),'o','filled','MarkerEdgeColor','k');
-                    h11=scatter(Res{i_scale}.x(pt.x),Res{i_scale}.y(pt.y),100,pt.krig.lambda'* XY_ns,'o','filled','MarkerEdgeColor','r','LineWidth',1.5);
-                else
-                    XY_ns = [Prim.d_ns; Res{i_scale}.m_ns{1}(~isnan(Res{i_scale}.m_ns{1}))];
-                    sel_g_ini=[Prim.x Prim.y; Res{i_scale}.X(~isnan(Res{i_scale}.m{i_realisation})) Res{i_scale}.Y(~isnan(Res{i_scale}.m{i_realisation}))];
-                    sel_g = sel_g_ini(pt.krig.mask,:);
-                    scatter(sel_g(:,1),sel_g(:,2),lambda_c,XY_ns(pt.krig.mask),'o','filled','MarkerEdgeColor','k');
-                    scatter(Res{i_scale}.x(pt.x),Res{i_scale}.y(pt.y),100,pt.krig.lambda'* XY_ns(pt.krig.mask),'o','filled','MarkerEdgeColor','r','LineWidth',1.5)
-                end
+                n_hd = numel(Prim.x(pt.krig.mask.prim));
+                sel=[Prim.x(pt.krig.mask.prim) Prim.y(pt.krig.mask.prim); Res{i_scale}.X(pt.krig.mask.res) Res{i_scale}.Y(pt.krig.mask.res)];
+                XY_ns = [Prim.d_ns(pt.krig.mask.prim) ; Res{i_scale}.m_ns{i_realisation}(pt.krig.mask.res)];
+                h9=scatter(sel(1:n_hd,1),sel(1:n_hd,2),lambda_c(1:n_hd),XY_ns(1:n_hd),'s','filled','MarkerEdgeColor','k');
+                h10=scatter(sel(n_hd+1:end,1),sel(n_hd+1:end,2),lambda_c(n_hd+1:end),XY_ns(n_hd+1:end),'o','filled','MarkerEdgeColor','k');
+                h11=scatter(Res{i_scale}.x(pt.x), Res{i_scale}.y(pt.y),100,pt.krig.lambda'* XY_ns(:),'o','filled','MarkerEdgeColor','r','LineWidth',1.5);
+                
                 xlabel('x[m]');ylabel('y[m]');
                 %colorbar;
                 xlim([Res{i_scale}.x(1) Res{i_scale}.x(end)])
@@ -549,14 +540,16 @@ for i_scale=1:parm.n_scale % for each scale
                 plot( kern.axis_prim,pt.aggr.pdf)
                 plot(  kern.axis_prim, max(pt.aggr.pdf)*pt.aggr.cdf)
                 plot([pt.sampled pt.sampled],[0 max(pt.aggr.pdf)],'k')
-                legend(['Kriging, w=' num2str(parm.w_krig(i_scale))], ['Secondary, w=' num2str(parm.w_sec(i_scale))],'Aggregated','Aggreag. cdf','sampled location')
+                legend(['Kriging, w=' num2str(parm.aggr.fx(parm,i_scale,i_pt))], ['Secondary, w=' num2str(parm.aggr.fx(parm,i_scale,i_pt))],'Aggregated','Aggreag. cdf','sampled location')
                 
                 
                 subplot(3,2,6); hold on;
+                %ksdensity(Sec.d(:));
+                %ksdensity(Res{i_scale}.m{i_realisation}(~isnan(Res{i_scale}.m{i_realisation}(:))));
                 %[f,x]=hist(X_ini.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
-                [f,x]=hist(Z.d(:)); plot(x,f/trapz(x,f),'linewidth',2);
-                [f,x]=hist(R{i_scale}.m{i_realisation}(:),50); plot(x,f/trapz(x,f));
-                legend('Well sampling', 'ERT','Simulation')
+                [f,x]=hist(Prim.d_ns(:)); plot(x,f/trapz(x,f),'linewidth',2);
+                [f,x]=hist(Res{i_scale}.m_ns{i_realisation}(:),50); plot(x,f/trapz(x,f));
+                legend('Well sampling', 'Simulation')
                 
                 drawnow
                 keyboard
@@ -571,5 +564,6 @@ for i_scale=1:parm.n_scale % for each scale
     end
 
 end
+t_out = t.toc;
 
 end
