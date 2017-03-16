@@ -62,41 +62,45 @@ parm.k.covar = gen.covar;
 
 parm.unit='';
 parm.nscore = 1;
-parm.par = 0;
+parm.par = 1;
 parm.n_realisation  = 100;
-parm.k.nb = [0 0 0 0 0; 10 10 10 10 100];
+parm.k.nb = [0 0 0 0 0; 10 10 10 10 20];
 parm.cstk = true;
-parm.seed = 'shuffle';
+parm.seed = 'default';
 parm.scale=[grid_gen.sx;grid_gen.sy]; % no multigrid
 parm.saveit = false;
-parm.k.method = 'sort'; % sort, sbss (29.6) or smart minkmex
+parm.k.method = 'sbss'; % sort, sbss (29.6) or smart minkmex
 parm.k.quad = 0;
 parm.k.wradius = 1.3;
 parm.plot.kernel=0;
 parm.plot.ns= 0;
-parm.path='quasirandom';
-parm.path_random='false';
-
 parm.plot.krig=0;
+parm.path='quasirandom';
+parm.path_random=0;
+
 Klog=K;
 Klog.d=log(Klog.d);
 
 % work on the weight
 a=.1;
 b=10;
-parm.aggr.fx = @(parm,grid,i_scale,i_pt) 0;%(atan(a*b) - atan(b*(a -  i_pt./grid{end}.nxy )))/(atan(a*b) - atan(b*(a - 1)));
 
-% figure(99);hold on; 
-% i_pt_temp=1:grid_gen.nxy;
-% plot(i_pt_temp,parm.aggr.fx(parm,grid_gen,1,i_pt_temp));
+for i=1:11
+    
+    parm.aggr.fx = @(parm,grid,i_scale,i_pt) (i-1)/10 ;%(atan(a*b) - atan(b*(a -  i_pt./grid{end}.nxy )))/(atan(a*b) - atan(b*(a - 1)));
+    
+    % figure(99);hold on;
+    % i_pt_temp=1:grid_gen.nxy;
+    % plot(i_pt_temp,parm.aggr.fx(parm,grid_gen,1,i_pt_temp));
+    
+    Res{i} =  BSGS(Klog,Sigma,grid_gen,parm);
 
-[Res, t, kern, k, ~, Nscore, filename] =  BSGS(Klog,Sigma,grid_gen,parm);
+end
 
 
 
 
-
-%%
+%% TEST HYPOTHESE
 % Histogram:
 figure(1);clf; hold on;
 for i_realisation=1:parm.n_realisation
@@ -111,10 +115,33 @@ legend(strread(num2str(p),'%s'))
 
 % Variogram
 for i_realisation=1:parm.n_realisation
-    [gamma_x_y{i_realisation}, gamma_y_y{i_realisation}] = variogram_gridded_perso(Res{end}.m_ns{i_realisation});
+    [gamma_x(:,i_realisation), gamma_y(:,i_realisation)] = variogram_gridded_perso(Res{end}.m_ns{i_realisation});
 end
+id1 = grid_gen.x<parm.k.covar(1).range(1)*parm.k.wradius & grid_gen.x>0;
+id2 = grid_gen.y<parm.k.covar(1).range(2)*parm.k.wradius & grid_gen.y>0;
+X = [gamma_x(id1,:)'];% gamma_y(id2,:)'];
+[n,p]=size(X);
 
-figure(2);clf; 
+
+Gamma = mean(X);
+S_Gamma = cov(X,1);
+Gamma_t = [(1-parm.k.covar(1).g(grid_gen.x(id1)/parm.k.covar(1).range(1)))];%...
+    %(1-parm.k.covar(1).g(grid_gen.y(id2)/parm.k.covar(1).range(2)))];
+
+T2 = (n-1) * (Gamma-Gamma_t) / S_Gamma * (Gamma-Gamma_t)';
+% alpha=.05;
+%T2max = p*(n-1)/(n-p)*finv(1-alpha,n,n-p);
+P=1-fcdf((n-p)/((n-1)*p)*T2, p, n-p);  %Probability that null Ho: is true. 5.4252e-05
+
+figure; hold on;
+plot(X','-k')
+plot(Gamma,'-k','linewidth',5)
+plot(Gamma_t,'--r','linewidth',2)
+legend(num2str(T2),num2str(P))
+
+
+
+figure;clf; 
 subplot(1,2,1); hold on
 id= grid_gen.x<parm.k.covar(1).range(1)*1.2;
 for i_realisation=1:parm.n_realisation
@@ -139,7 +166,6 @@ a0_C=covardm_perso([Klog.x Klog.y],[grid_gen.X(:) grid_gen.Y(:)],parm.k.covar);
 ab_C=covardm_perso([Klog.x Klog.y],[Klog.x Klog.y],parm.k.covar);
 Klogkrig=reshape((ab_C \ a0_C)'*Nscore.forward(Klog.d),grid_gen.ny,grid_gen.nx);
 
-
 Res3Dmean = mean(Res3D,3);
 figure(3); clf;
 subplot(3,1,1); imagesc(Klogkrig)
@@ -149,114 +175,130 @@ subplot(3,1,3); imagesc(Res3Dmean-Klogkrig)
 
 % Covariances
 C=sparse(covardm_perso([grid_gen.X(:) grid_gen.Y(:)],[grid_gen.X(:) grid_gen.Y(:)],parm.k.covar));
-
 Res3D = reshape([Res{end}.m_ns{:}], [grid_gen.ny, grid_gen.nx, parm.n_realisation]);
 Res2D=reshape(Res3D,[grid_gen.nxy, parm.n_realisation])';
-id_prim = std(Res2D).^2<eps; % remove hard data
-Cc = C;
-Cc(:,id_prim)=[];
-Cc(id_prim,:)=[];
-Res2Dc=Res2D;
-Res2Dc(:,id_prim)=[];
-Klogkrig2 = Klogkrig(:);
-Klogkrig2(id_prim)=[];
-ResM=mean(Res2Dc);
-ResC=cov(Res2Dc);
 
-T2 = (ResM-Klogkrig2(:)')*inv(Cc/parm.n_realisation)*(ResM-Klogkrig2(:)')';
+ResC = cov(Res2D);
 
-P=1-chi2cdf(T2,size(Res2Dc,2));
-
-figure(4); clf;
-subplot(1,3,1); imagesc(ResC); colorbar;
-subplot(1,3,2); imagesc(Cc); colorbar;
-subplot(1,3,3); imagesc(ResC-Cc); colorbar;
-
-a=reshape(sum(cov(Res2D)-C),grid_gen.ny, grid_gen.nx);
-figure; imagesc(a)
-
-%% OLD
-
-OF_true.mean = mean(Prim_true(:));
-OF_true.std = std(Prim_true(:));
-% Variogram
-[OF_true.vario_x_field, OF_true.vario_y_field] = variogram_gridded_perso(Prim_true);
-OF_true.vario_x_theo = semivariogram1D(grid{end}.x,1,parm.gen.covar.modele(1,2),parm.gen.covar.modele(1),0);
-OF_true.vario_y_theo = semivariogram1D(grid{end}.y,1,parm.gen.covar.modele(1,3),parm.gen.covar.modele(1),0);
+figure; clf;
+% subplot(1,3,1); imagesc(ResC); colorbar;
+% subplot(1,3,2); imagesc(C); colorbar;
+% subplot(1,3,3); 
+imagesc(ResC-C); colorbar;
 
 
-of(1)=OF('SIM-00_2016-06-16_16-44-10');
-of(2)=OF('SIM-025_2016-06-17_09-43-54');
-of(3)=OF('SIM-05_2016-06-17_12-34-45');
-of(4)=OF('SIM-10_2016-06-16_16-12-32');
+% Secondary variable
+figure; clf;
+subplot(3,3,[1 3]); imagesc(Sigma.d); colorbar;
+subplot(3,3,[4 6]); imagesc(Res3Dmean); colorbar;
 
-
-name={'0','.25','.5','1'};
-col={'b','r','g','m'};
-
-
-figure(101)
-subplot(2,2,[1 2]); hold on;
-for i=1:numel(of)
-    plot(of(i).hist_pts, mean(of(i).hist), col{i})
-    plot(of(i).hist_pts, mean(of(i).hist)-std(of(i).hist) ,['--' col{i}])
-    plot(of(i).hist_pts, mean(of(i).hist)+std(of(i).hist) ,['--' col{i}])
-end
-plot(-4:.01:4,normpdf(-4:.01:4,0,1),'--k')
-axis tight;
-legend(name)
-
-subplot(2,2,3); hold on;
-plot([1 numel(of)],[0 0],'--k')
-boxplot(reshape([of.mean],40,numel(of)),name)
-
-subplot(2,2,4); hold on;
-plot([1 numel(of)],[1 1],'--k')
-boxplot(reshape([of.std],40,numel(of)),name)
-
-
-
-figure(102)
-subplot(1,2,1); hold on;
-plot(grid{end}.x, OF_true.vario_x_theo,'--k')
-plot(grid{end}.x, OF_true.vario_x_field,'--k')
-for i=1:numel(of)
-    plot(grid{end}.x, mean(of(i).gamma_x,2),'.-')
-end
-axis tight; xlim([0 parm.gen.covar.modele(1,2)*1.3])
-legend({'theory','true field',name{:}})
-subplot(1,2,2); hold on;
-plot(grid{end}.y, OF_true.vario_y_theo,'--k')
-plot(grid{end}.y, OF_true.vario_y_field,'--k')
-for i=1:numel(of)
-    plot(grid{end}.y, mean(of(i).gamma_y,2),'-')
-end
-axis tight; xlim([0 parm.gen.covar.modele(1,3)*1.3])
-legend({'theory','true field',name{:}})
-
-
-figure(103);
-c_axis=[min(parm.gen.Rho.f.output.pseudo_interp(:)), max(parm.gen.Rho.f.output.pseudo_interp(:))];
-subplot(numel(of)+1,1,1);
-imagesc(parm.gen.Rho.f.output.pseudo_interp); caxis(c_axis); axis tight;
-for i=1:numel(of)
-    subplot(numel(of)+1,1,i+1);
-    imagesc(mean(of(i).ert_interp,3)); caxis(c_axis); axis tight;
-    xlabel(name{i})
+[X,Y] = meshgrid(linspace(min(Sigma.d(:)),max(Sigma.d(:)),100), linspace(min(Res{1}.m{1}(:)),max(Res{1}.m{1}(:)),100));
+j1 = ksdensity([sigma.d(:) Klog.d],[X(:),Y(:)]);
+j1 = reshape(j1,size(X,1),size(X,2));
+j2=nan(size(X,1),size(X,2), parm.n_realisation);
+for i_realisation=1:parm.n_realisation
+    j2(:,:,i_realisation) = reshape(ksdensity([Sigma.d(:) Res{1}.m{i_realisation}(:)],[X(:),Y(:)]),size(X,1),size(X,2));
 end
 
-figure(104); hold on
-for i=1:numel(of)
-    plot(of(i).w(1,:),[col{i} 'x-'])
+subplot(3,3,7); imagesc(j1)
+subplot(3,3,8); imagesc(mean(j2,3))
+subplot(3,3,9); imagesc(mean(j2,3)-j1)
+
+
+
+j1=[sigma.d(:) Klog.d];
+j2=[];
+for i_realisation=1:1%parm.n_realisation
+    j2 = [j2; Sigma.d(:) Res{1}.m{i_realisation}(:)];
+end
+
+[p,D] = kstest2d(j1,j2);
+
+
+figure; hold on;
+subplot(1,2,1); ksdensity(j1)
+subplot(1,2,2); ksdensity(j2)
+
+
+%% Error
+id = grid_gen.x<parm.k.covar(1).range(1);
+Gamma_t = (1-parm.k.covar(1).g(grid_gen.x(id)/parm.k.covar(1).range(1)));
+[X,Y] = meshgrid(linspace(min(sigma.d(:)),max(sigma.d(:)),100),...
+    linspace(min(Klog.d(:)),max(Klog.d(:)),100));
+jpdf = reshape(ksdensity([sigma.d(:) Klog.d],[X(:),Y(:)]),size(X,1),size(X,2));
+Sigmad3D = repmat(Sigma.d,1,1,parm.n_realisation);
+
+
+for i=1:11
+    % Variogram
+    for i_realisation=1:parm.n_realisation
+        [gamma_x(:,i_realisation), gamma_y(:,i_realisation)] = variogram_gridded_perso(Res{i}{end}.m_ns{i_realisation});
+    end
+    Gamma{i} = mean(gamma_x(id,:),2)';
+    E1(i) = sqrt(mean((Gamma{i} - Gamma_t).^2));
+    
+    % Joint PDF
+    Res3D = reshape([Res{i}{end}.m_ns{:}], [grid_gen.ny, grid_gen.nx, parm.n_realisation]);
+    Resjpdf{i}=reshape(ksdensity([Sigmad3D(:) Res3D(:)],[X(:),Y(:)]),size(X,1),size(X,2));
+    E2(i) = sqrt(mean((Resjpdf{i}(:) - jpdf(:)).^2));
 end
 
 
-figure(105); hold on;
-plot([1 numel(of)],[0 0],'--k')
-boxplot(reshape([of.ert_err],40,numel(of)),name)
+figure;
+subplot(1,2,1); plot(E1)
+subplot(1,2,2); hold on; plot(E2)
 
-figure(106); hold on;
-plot([1 numel(of)],[0 0],'--k')
-boxplot(reshape([of.H],40,numel(of)),name)
+figure; hold on;
+for i=1:11
+    plot(Gamma{i});
+end
+plot(Gamma_t,'-r','linewidth',3)
+
+
+%% Calibration
+parm.n_realisation  = 30;
+parm.par = 1;
+parm.seed = 'default';
+
+id = grid_gen.x<parm.k.covar(1).range(1);
+Gamma_t = (1-parm.k.covar(1).g(grid_gen.x(id)/parm.k.covar(1).range(1)));
+[X,Y] = meshgrid(linspace(min(sigma.d(:)),max(sigma.d(:)),100),...
+    linspace(min(Klog.d(:)),max(Klog.d(:)),100));
+jpdf = reshape(ksdensity([sigma.d(:) Klog.d],[X(:),Y(:)]),size(X,1),size(X,2));
+Sigmad3D = repmat(Sigma.d,1,1,parm.n_realisation);
+
+
+fun = @(x) OF(Klog,Sigma,grid_gen,parm,id,Gamma_t,X,Y,jpdf,Sigmad3D, x);
+fun(0)
+fun(1)
+
+
+% Pareto Front
+nf = 2; % number of objective functions
+N = 3; % number of points for plotting
+onen = 1/N;
+x = zeros(N+1,1);
+f = zeros(N+1,nf);
+x0 = 0.5;
+goal=[0.401 .028];
+options = optimoptions('fgoalattain','Display','iter','PlotFcn',{@optimplotx @optimplotfval});
+for r = 0:N
+    t = onen*r; % 0 through 1
+    weight = [t,1-t];
+    [x(r+1,:),f(r+1,:)] = fgoalattain(fun,x0,goal,weight,...
+        [],[],[],[],[],[],[],options);
+end
+
+figure
+plot(f(:,1),f(:,2),'k.');
+xlabel('f_1')
+ylabel('f_2')
+
+
+
+x0= .5*ones(grid.)
+
+[xf,fval,exitflag,output,grad,hessian] = fminbnc( @(x) OF(Klog,Sigma,sigma,grid_gen,parm,x), x0,options)
+
 
 

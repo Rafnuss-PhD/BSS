@@ -236,8 +236,8 @@ Prim.d_ns = Nscore.forward(Prim.d);
 if strcmp(parm.k.method,'sbss'); k.sb.mask_ini = k.sb.mask; end % mask will be change after, we preserve its structure
 
 if parm.par && parm.n_realisation~=1 % if parralelelisation is selected
-    delete(gcp('nocreate'));
-    poolobj=parpool(parm.par_n); % find the number of core available
+    %delete(gcp('nocreate'));
+%     poolobj=parpool(parm.par_n); % find the number of core available
     par_n_realisation = ceil(parm.n_realisation/poolobj.NumWorkers);
     
     RR=cell(poolobj.NumWorkers,1);
@@ -249,9 +249,9 @@ if parm.par && parm.n_realisation~=1 % if parralelelisation is selected
     parfor pool_i=1:poolobj.NumWorkers
         [RR{pool_i}, tt{pool_i}]=BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm_pool);
     end
-    delete(poolobj)
+    %delete(poolobj)
     
-    Res=RR{1};
+    Res=RR{1};    t.scale=[];    t.cstk=[];    t.pt=[];    t.krig=[];
     for pool_i=2:numel(RR)
         for i_scale=1:parm.n_scale
             Res{i_scale}.m = [Res{i_scale}.m; RR{pool_i}{i_scale}.m];
