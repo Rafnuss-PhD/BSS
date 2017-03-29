@@ -343,11 +343,11 @@ for i_scale=1:parm.n_scale % for each scale
         end
     end
     
-    % Remove the assimilated data from X.
-    Prim.d(hard_data_idx)=[];
-    Prim.x(hard_data_idx)=[];
-    Prim.y(hard_data_idx)=[];
-    Prim.d_ns(hard_data_idx)=[];
+    % Should not remove from Prim. 
+%     Prim.d(hard_data_idx)=[];
+%     Prim.x(hard_data_idx)=[];
+%     Prim.y(hard_data_idx)=[];
+%     Prim.d_ns(hard_data_idx)=[];
     if parm.varcovar; Prim.varcovar(hard_data_idx)=[]; end
     if strcmp(parm.k.method,'sbss'); k.sb.mask(:,:,hard_data_idx)=[]; end
     Prim.n=numel(Prim.d);

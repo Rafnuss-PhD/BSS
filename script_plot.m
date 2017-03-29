@@ -59,7 +59,6 @@ xlabel('x[m]'); ylabel('y [m]'); title('INTERPOLATED Standard deviation of resis
 
 % Well data
 figure;
-
 title('Observed and inverted electrical resisitivity at well')
 [uniq_x,ia,ic] = unique(sigma.x);  %C = A(ia) and A = C(ic).
 n_well = numel(uniq_x);
@@ -89,15 +88,15 @@ xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse');
 subplot(4,1,2); hold on; 
 imagesc(grid_gen.x, grid_gen.y, log10(K_true)); plot(K.x, K.y, 'or'); 
 title('Log True Hydraulic Conudctivity K_{true} and sampled point location K'); 
-xlabel('x[m]'); ylabel('y [m]'); colorbar; set(gca,'Ydir','reverse'); axis tight
+xlabel('x[m]'); ylabel('y [m]'); colorbar; set(gca,'Ydir','reverse'); axis tight equal
 subplot(4,1,3);
 imagesc(grid_gen.x, grid_gen.y, sigma_true); hold on; plot(sigma.x, sigma.y, 'or'); 
 title('True Electrical Conductivity \sigma_{true} and sampled point location g');
-xlabel('x[m]'); ylabel('y [m]');  colorbar; set(gca,'Ydir','reverse'); caxis(caxis_lim);
+xlabel('x[m]'); ylabel('y [m]');  colorbar; set(gca,'Ydir','reverse'); caxis(caxis_lim);axis equal
 subplot(4,1,4); 
 imagesc(grid_gen.x, grid_gen.y, Sigma.d); 
 title('Inverted Electrical Conductivity \Sigma_{true}'); 
-xlabel('x[m]'); ylabel('y [m]');colorbar; set(gca,'Ydir','reverse'); caxis(caxis_lim);
+xlabel('x[m]'); ylabel('y [m]');colorbar; set(gca,'Ydir','reverse'); caxis(caxis_lim); axis equal
 
 
 figure;
@@ -116,6 +115,19 @@ title('Electrical Conductivity Tomography standard deviation [mS/m]');
 % subplot(4,1,4); 
 % imagesc(grid_gen.x,grid_gen.y,sigma_true-Sigma.d); 
 % xlabel('x[m]'); ylabel('y [m]'); title('rho_{true}-G');colorbar;set(gca,'Ydir','reverse');
+
+
+figure;
+subplot(2,1,1); 
+imagesc(grid_gen.x,grid_gen.y,log(K_true));hold on; plot(sigma.x, sigma.y, 'or'); 
+xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse'); 
+title('True Hydraulic Conductivity [Log m/s] and well location'); axis equal tight
+caxis([kern.axis_prim(1) kern.axis_prim(end)])
+subplot(2,1,2); 
+imagesc(grid_gen.x,grid_gen.y,Sigma.d); 
+xlabel('x[m]'); ylabel('y [m]');  colorbar;set(gca,'Ydir','reverse');
+title('Electrical Conductivity Tomography [mS/m]'); axis equal tight
+caxis([kern.axis_sec(1) kern.axis_sec(end)])
 
 % Histogram
 figure;
@@ -160,7 +172,7 @@ kernel.x = kern.axis_sec;
 
 
 figure(2);clf;
-caxis_limm = [min([X_true(:);Y{end}.m{end}(:)]) max([X_true(:);Y{end}.m{end}(:)])];
+caxis_limm = [min([X_true(:);Y.m{end}(:)]) max([X_true(:);Y.m{end}(:)])];
 
 subplot(kk,mm,1); hold on; 
 pcolor(grid_gen.x,grid_gen.y,X_true);
@@ -169,9 +181,9 @@ shading flat;colorbar; caxis(caxis_limm); axis tight;set(gca,'Ydir','reverse'); 
 title([ 'True ',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and X_{sampled}: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
 for i_sim=2:mm*kk
     subplot(kk,mm,i_sim); 
-    pcolor(Y{end}.x,Y{end}.y,Y{end}.m{i_sim-1});
+    pcolor(Y.x,Y.y,Y.m{i_sim-1});
     shading flat;colorbar;caxis(caxis_limm);axis tight;set(gca,'Ydir','reverse'); xlabel('x[m]');ylabel('y[m]');
-    title(['Simmulated ', parm.unit, ': \mu=' num2str(mean2(Y{end}.m{i_sim-1})) ' | \sigma=' num2str(std2(Y{end}.m{i_sim-1})) ]);
+    title(['Simmulated ', parm.unit, ': \mu=' num2str(mean2(Y.m{i_sim-1})) ' | \sigma=' num2str(std2(Y.m{i_sim-1})) ]);
 end
 if isfield(parm, 'savefig') && parm.savefig
     filename=['result/', parm.familyname, 'simulations_', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.fig'];
@@ -179,10 +191,10 @@ if isfield(parm, 'savefig') && parm.savefig
 end
 
 % Histogramm
-bins=linspace(min(min([Y{end}.m{:}])), max(max([Y{end}.m{:}])), 25);
+bins=linspace(min(min([Y.m{:}])), max(max([Y.m{:}])), 25);
 ff=zeros(numel(bins),parm.n_realisation);
 for i_sim=1:parm.n_realisation
-    f=hist(Y{end}.m{i_sim}(:),bins); 
+    f=hist(Y.m{i_sim}(:),bins); 
     ff(:,i_sim) = f/trapz(bins,f);
 end
 figure(3);clf;  hold on; 
@@ -190,7 +202,7 @@ plot(bins,mean(ff,2),'--k')
 plot(bins,max(ff,[],2),'k')
 plot(bins,min(ff,[],2),'k')
 h1=fill( [bins fliplr(bins)],  [max(ff,[],2)' fliplr(min(ff,[],2)')], [.4 .4 .4],'DisplayName','min and max range '); alpha(.25);
-% stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation %d | \\mu=%.2f, \\sigma=%.2f',i_sim,mean(Y{end}.m{i_sim}(:)), std(Y{end}.m{i_sim}(:))));
+% stairs(x,f/trapz(x,f),'DisplayName',sprintf('Simulation %d | \\mu=%.2f, \\sigma=%.2f',i_sim,mean(Y.m{i_sim}(:)), std(Y.m{i_sim}(:))));
 f=hist(X_true(:),bins); h2=plot(bins,f/trapz(bins,f),'linewidth',2,'DisplayName',sprintf('True : \\mu=%.1f | \\sigma=%.1f',mean(X_true(:)), std(X_true(:))));
 [f,x]=hist(X.d(:),bins); h3=plot(x,f/trapz(x,f),'linewidth',2,'DisplayName',sprintf('Sampled| \\mu=%.1f | \\sigma=%.1f',mean(X.d(:)), std(X.d(:))));
 
@@ -207,19 +219,19 @@ end
 %% Variogram
 [gamma_x_s, gamma_y_s] = variogram_gridded_perso(X_true);
 for i_realisation=1:parm.n_realisation
-    [gamma_x_y{i_realisation}, gamma_y_y{i_realisation}] = variogram_gridded_perso(Y{end}.m{i_realisation});
+    [gamma_x_y{i_realisation}, gamma_y_y{i_realisation}] = variogram_gridded_perso(Y.m_ns{i_realisation});
 end
 
 
 figure(4);clf; 
 subplot(1,2,1);
 hold on
-id= grid_gen.x<parm.k.covar(1).range(1)*1.2;
+id = grid_gen.x<parm.k.covar(1).range(1)*parm.k.wradius;
 for i_realisation=1:parm.n_realisation
     h1=plot(grid_gen.x(id),gamma_x_y{i_realisation}(id),'Color', [.4 .4 .4]);
 end
-h3=plot(grid_gen.x(id),gamma_x_s(id),'k','linewidth',2);
-h2=plot(grid_gen.x(id),(1-parm.k.covar(1).g(grid_gen.x(id)/parm.k.covar(1).range(1))) * std(X_true(:)),'--k','linewidth',3);
+h3=plot(grid_gen.x(id),gamma_x_s(id)./std(X_true(:)),'k','linewidth',2);
+h2=plot(grid_gen.x(id),(1-parm.k.covar(1).g(grid_gen.x(id)/parm.k.covar(1).range(1))),'--k','linewidth',3);
 legend([h2, h3, h1],'Theorical model C(h)','True','simulation(s)');
 ylabel('Horizontal'); xlabel('m');axis tight
 
@@ -236,20 +248,20 @@ for i_realisation=1:parm.n_realisation
     h1=plot(grid_gen.y(id),gamma_y_y{i_realisation}(id),'Color', [.4 .4 .4]);
 end
 h3=plot(grid_gen.y(id),gamma_y_s(id),'k','linewidth',3);
-h2=plot(grid_gen.y(id),(1-parm.k.covar(1).g(grid_gen.y(id)/parm.k.covar(1).range(2))) * std(X_true(:)),'--k','linewidth',3);
+h2=plot(grid_gen.y(id),(1-parm.k.covar(1).g(grid_gen.y(id)/parm.k.covar(1).range(2))),'--k','linewidth',3);
 legend([h2, h3, h1],'Theorical model C(h)','True','simulation(s)','Location','northwest')
 ylabel('Vertical'); xlabel('m'); axis tight
 
 
 
 %% Several field statistic
-YY=nan(parm.n_realisation,numel(Y{end}.m{1}));
+YY=nan(parm.n_realisation,numel(Y.m{1}));
 for i_realisation=1:parm.n_realisation
-    YY(i_realisation,:) = Y{end}.m{i_realisation}(:);
+    YY(i_realisation,:) = Y.m{i_realisation}(:);
 end
 
-YY_mean=reshape(mean(YY),size(Y{end}.m{1},1),size(Y{end}.m{1},2));
-YY_std=reshape(std(YY),size(Y{end}.m{1},1),size(Y{end}.m{1},2));
+YY_mean=reshape(mean(YY),size(Y.m{1},1),size(Y.m{1},2));
+YY_std=reshape(std(YY),size(Y.m{1},1),size(Y.m{1},2));
 
 figure(5);clf; hold on;
 subplot(3,1,1); imagesc(grid.x,grid.y,X_true); colorbar; title('true primary'); c_axis=caxis;
@@ -261,7 +273,7 @@ subplot(3,1,3); imagesc(grid.x,grid.y,YY_std); colorbar; title('Std of realisati
 %% Error
 figure(6);clf
 for i_sim=1:mm*(kk-1)
-    subplot(kk-1,mm,i_sim); pcolor(grid.x,grid.y, Y{end}.m{i_sim}-X_true); 
+    subplot(kk-1,mm,i_sim); pcolor(grid.x,grid.y, Y.m{i_sim}-X_true); 
     title(['Error in Simmulated ',parm.unit, ' Y - X_{true}']); xlabel('x[m]');ylabel('y[m]');
     shading flat;colorbar;axis tight;set(gca,'Ydir','reverse');
 end
@@ -299,7 +311,7 @@ end
 figure; hold on;
 imagesc(kernel.x, kernel.y, kernel.dens)
 plot(Zdx, X.d, 'xk');
-xlabel('Primary variable X'); xlabel('Secondary variable Y');
+ylabel('Primary variable X'); xlabel('Secondary variable Y');
 axis tight; colorbar
 
 
@@ -367,7 +379,7 @@ set(gca,'Ydir','reverse'); xlim([-5 5])
 
 
 
-
+%% 
 
 
 

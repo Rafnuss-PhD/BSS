@@ -59,10 +59,11 @@ if ~isfield(gen, 'Rho') || ~isfield(gen.Rho, 'dmin') || ~isfield(gen.Rho.dmin, '
 if ~isfield(gen, 'plotit'); gen.plotit = 0; end
 if ~isfield(gen, 'saveit'); gen.saveit = 1; end
 if ~isfield(gen, 'name'); gen.name = ''; end
-if ~isfield(gen, 'seed'); gen.seed = rand; end
+if ~isfield(gen, 'seed'); gen.seed = 'default'; end
 if ~isfield(gen, 'plot'); gen.plot = true; end
-
 tic
+
+rng(gen.seed)
 
 %% * 2. *construction of the grid_gen*
 grid_gen.sx     = gen.sx;
@@ -167,7 +168,7 @@ sigma = sampling_pt(grid_gen,sigma_true,gen.samp,gen.samp_n);
  K    = sampling_pt(grid_gen,K_true,gen.samp,gen.samp_n);
  
 % Plot
-if gen.plot
+if gen.plotit
     figure(1);clf; subplot(2,1,1); hold on;axis equal; title('Electrical Conductivity [mS/m]');xlabel('x [m]'); ylabel('y [m]')
     imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar;  scatter(sigma.x,sigma.y,sigma.d); legend({'Sampled location'})
     subplot(2,1,2); hold on; title('Histogram'); xlabel('Electrical Conductivity [mS/m]');
@@ -184,7 +185,7 @@ if gen.plot
     plot(grid_gen.y(1:end/2),1-gen.covar.g(grid_gen.y(1:end/2)/gen.covar.range(2)),'linewidth',2)
     
     figure(3);
-    scatter(K_true(:),sigma_true(:))
+    ksdensity([log(K_true(:)),sigma_true(:)])
     
     keyboard;close all; % try different initial data if wanted
 end

@@ -17,6 +17,7 @@ end
 
 
 function path = definepath_in(Res,grid,parm,Sim)
+rng(parm.seed); % path among parrallel core can be the same if parm.seed is default
 if strcmp(parm.path,'linear')
     if parm.path_random
         path = randperm(Sim.n);

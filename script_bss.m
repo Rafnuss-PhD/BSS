@@ -32,8 +32,8 @@ gen.ymax = 20; %total hight in unit [m]
 
 % Scale define the subdivision of the grid (multigrid). At each scale, the
 % grid size is $(2^gen.sx+1) \times (2^gen.sy+1)$ 
-gen.sx = 8;
-gen.sy = 5;
+gen.sx = 9;
+gen.sy = 6;
 
 % Generation Method: All method generate with FFTMA a gaussian field.
 % 'Normal'              with normal distribution \sim N(gen.mu,gen.std)
@@ -46,7 +46,7 @@ gen.method              = 'fromPhi';
 gen.samp                = 1;          % Method of sampling of K and g | 1: borehole, 2:random. For fromK or from Rho only
 gen.samp_n              = 4;          % number of well or number of point
 gen.covar(1).model      = 'spherical';
-gen.covar(1).range0     = [15 4];
+gen.covar(1).range0     = [10 3];
 gen.covar(1).azimuth    = 0;
 gen.covar(1).c0         = 1;
 gen.covar               = kriginginitiaite(gen.covar);
@@ -59,7 +59,7 @@ gen.Rho.grid.nx           = 200;
 gen.Rho.grid.ny           = 15; % log-spaced grid.
 gen.Rho.elec.spacing      = 2; % in grid spacing unit.
 gen.Rho.elec.config_max   = 6000; % number of configuration of electrode maximal 
-gen.Rho.dmin.res_matrix   = 1; % resolution matrix: 1-'sensitivity' matrix, 2-true resolution matrix or 0-none
+gen.Rho.dmin.res_matrix   = 2; % resolution matrix: 1-'sensitivity' matrix, 2-true resolution matrix or 0-none
 gen.Rho.dmin.tolerance    = 10;
 
 % Other parameter

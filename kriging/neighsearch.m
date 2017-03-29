@@ -11,7 +11,6 @@ end
 
 
 if strcmp(krig.method,'sbss')
-    
     % 1. Super Grid Block from Hard Data:
     sb_j = min([round((Res.y(pt.y)-krig.sb.y(1))/krig.sb.dy +1)'; krig.sb.ny]);
     sb_i = min([round((Res.x(pt.x) -krig.sb.x(1))/krig.sb.dx +1)'; krig.sb.nx]);
@@ -33,7 +32,7 @@ if strcmp(krig.method,'sbss')
             while n(q)<krig.nb(2,q) && nn<=nn_max && krig.ss.el.dist_s(nn)<=krig.wradius % while not exceed number of point wanted and still inside the ellipse
                 it = pt.x + krig.qs(q,1)*krig.ss.el.X_s(nn);
                 jt = pt.y + krig.qs(q,2)*krig.ss.el.Y_s(nn);
-                if it>0 && jt>0 && it<=Res.nx && jt <=Res.ny % check to not be outside the grid
+                if it>0 && jt>0 && it<=Res.nx && jt <=Res.ny  && all(Prim.x(pt_krig.mask.prim)~=it) && all(Prim.y(pt_krig.mask.prim)~=jt) % check to not be outside the grid
                     if ~isnan(Res.m_ns{i_realisation}(jt,it)) % check if it,jt exist
                         n(q)=n(q)+1;
                         sel_ss_idx{q}(n(q),:) = [jt it];
@@ -52,7 +51,7 @@ if strcmp(krig.method,'sbss')
         while n<sum(krig.nb(2,1:4)) && nn<=length(krig.ss.el.X_s) && krig.ss.el.dist_s(nn)<=krig.wradius % while not exceed number of point wanted and still inside the ellipse
             it = pt.x + krig.ss.el.X_s(nn);
             jt = pt.y + krig.ss.el.Y_s(nn);
-            if it>0 && jt>0 && it<=Res.nx && jt <=Res.ny % check to not be outside the grid
+            if it>0 && jt>0 && it<=Res.nx && jt <=Res.ny &&  ~any(Prim.x(pt_krig.mask.prim)==Res.x(it) & Prim.y(pt_krig.mask.prim)==Res.y(jt)) % check to not be outside the grid
                 if ~isnan(Res.m_ns{i_realisation}(jt,it)) % check if it,jt exist
                     n=n+1;
                     sel_ss_idx(n,:) = [jt it];

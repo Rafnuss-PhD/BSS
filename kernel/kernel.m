@@ -1,4 +1,4 @@
-function kern = kernel(Prim, Sec, range, plotit)
+function kern = kernel(Prim, Sec, krange, plotit)
 % kernel computes the non-parametric density
 % INPUT :
 %         - Prim    : Primary variable
@@ -12,16 +12,25 @@ function kern = kernel(Prim, Sec, range, plotit)
 %         - x   : Primary variable (1D-X.n elts)
 %         - y   : Primary variable (1D-X.n elts)
 %         - n   : Number of ?? (1D-X.n elts)
+if (nargin == 2)
+    plotit=1;
+    krange={};
+    krange.min = [min(Sec.d(:))-.2*range(Sec.d(:)) min(Prim.d(:))-.2*range(Prim.d(:))];
+    krange.max = [max(Sec.d(:))+.2*range(Sec.d(:)) max(Prim.d(:))+.2*range(Prim.d(:))];
+end
 
 
 % Find the colocated value of Prim in Sec.
-data=nan(Prim.n,2);
-for i=1:Prim.n
-    [~,idy]=min((Prim.y(i)-Sec.y).^2);
-    [~,idx]=min((Prim.x(i)-Sec.x).^2);
-    data(i,:)=[Sec.d(idy, idx) Prim.d(i)];
+if all(Prim.y(:)==Sec.y) && all(Prim.x(:)==Sec.x)
+    data=[Sec.d Prim.d];
+else
+    data = nan(Prim.n,2);
+    for i=1:Prim.n
+        [~,idy] = min((Prim.y(i)-Sec.y).^2);
+        [~,idx] = min((Prim.x(i)-Sec.x).^2);
+        data(i,:)=[Sec.d(idy, idx) Prim.d(i)];
+    end
 end
-
 
 % Number of point in the joint pdf
 n = 2^8;
@@ -29,8 +38,8 @@ n = 2^8;
 
 % Define the range of the grid used in the density. Range have been
 % computed as input data
-assert( all(max(data) < range.max) )
-assert( all(min(data) > range.min) )
+assert( all(max(data) < krange.max) )
+assert( all(min(data) > krange.min) )
 
 
 % Bandwidth proposed by Foster and Bowman
@@ -38,7 +47,7 @@ l_sec=std(data(:,1))* Prim.n^(-1/6);
 l_prim=std(data(:,2))* Prim.n^(-1/6);
 
 % Compute the density
-[~,kern.dens,x,y]=kde2d_pr(data,n,range.min,range.max,l_sec,l_prim);
+[~,kern.dens,x,y]=kde2d_pr(data,n,krange.min,krange.max,l_sec,l_prim);
 
 % recover and re-name the output
 kern.axis_sec = x(1,:)'; 

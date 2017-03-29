@@ -235,42 +235,50 @@ Prim.d_ns = Nscore.forward(Prim.d);
 
 if strcmp(parm.k.method,'sbss'); k.sb.mask_ini = k.sb.mask; end % mask will be change after, we preserve its structure
 
-if parm.par && parm.n_realisation~=1 % if parralelelisation is selected
-    %delete(gcp('nocreate'));
-%     poolobj=parpool(parm.par_n); % find the number of core available
+
+if parm.par && parm.n_realisation > 1 % if parralelelisation is selected
+    poolobj=gcp('nocreate');
+    if isempty(poolobj)
+        poolobj=parpool(parm.par_n);
+    elseif poolobj.NumWorkers ~= parm.par_n
+        delete(poolobj);
+        poolobj=parpool(parm.par_n);
+    end
     par_n_realisation = ceil(parm.n_realisation/poolobj.NumWorkers);
     
     RR=cell(poolobj.NumWorkers,1);
     tt=cell(poolobj.NumWorkers,1);
-    
-    parm_pool=parm;
-    parm_pool.n_realisation = par_n_realisation;
-    
-    parfor pool_i=1:poolobj.NumWorkers
-        [RR{pool_i}, tt{pool_i}]=BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm_pool);
+
+    parfor i_pool=1:poolobj.NumWorkers
+        parm_pool=parm;
+        parm_pool.n_realisation = par_n_realisation;
+        parm_pool.i_pool = i_pool 
+        [RR{i_pool}, tt{i_pool}]=BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm_pool);
     end
-    %delete(poolobj)
+    % delete(poolobj)
     
     Res=RR{1};    t.scale=[];    t.cstk=[];    t.pt=[];    t.krig=[];
-    for pool_i=2:numel(RR)
-        for i_scale=1:parm.n_scale
-            Res{i_scale}.m = [Res{i_scale}.m; RR{pool_i}{i_scale}.m];
-            Res{i_scale}.m_ns = [Res{i_scale}.m_ns; RR{pool_i}{i_scale}.m_ns];
-        end
-        t.scale = [t.scale; tt{pool_i}.scale];
-        t.cstk = [t.cstk; tt{pool_i}.cstk];
-        t.pt = [t.pt; tt{pool_i}.pt];
-        t.krig = [t.krig; tt{pool_i}.krig];
+    for i_pool=2:numel(RR)
+        Res.m = [Res.m; RR{i_pool}.m];
+        Res.m_ns = [Res.m_ns; RR{i_pool}.m_ns];
+        Res.sim = [Res.sim; RR{i_pool}.sim];
+        t.scale = [t.scale; tt{i_pool}.scale];
+        t.cstk = [t.cstk; tt{i_pool}.cstk];
+        t.pt = [t.pt; tt{i_pool}.pt];
+        t.krig = [t.krig; tt{i_pool}.krig];
     end
     
     
-else
+elseif parm.n_realisation > 0
     [Res,t_out] = BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm);
     t.scale = t_out.scale;
     t.cstk = t_out.cstk;
     t.pt = t_out.pt;
     t.krig = t_out.krig;
+else
+    Res={};
 end
+
 
 
 % save intial value
@@ -285,12 +293,12 @@ t.global = toc(t.global);
 filename=['result/', parm.familyname, 'SIM-', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.mat'];
 if parm.saveit
     mkdir(['result/', parm.familyname])
-    save(filename, 'parm', 'Res', 'grid', 't', 'Prim', 'Sec', 'Prim_true', 'k', 'kern', 'Nscore')
+    save(filename, 'parm', 'Res', 'grid', 't', 'Prim', 'Sec', 'k', 'kern', 'Nscore')
 end
 
 if parm.notify
     unix(['echo "Simulation ' parm.familyname ' has finish now (' datestr(now,'yyyy-mm-dd_HH-MM-SS') ') in ' num2str(t.global/60) 'min" | mail -s "Simulation Finish" ' parm.notify_email]);
-    load handel; sound(y,Fs)
+    % load handel; sound(y,Fs)
 end
 
 end
@@ -302,7 +310,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [Res,t_out]=BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm)
+function [Res_out,t_out]=BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm)
 
 clear parm.k
 
@@ -311,6 +319,7 @@ t.toc.scale = [];
 t.toc.cstk = [];
 t.toc.pt = [];
 t.toc.krig = [];
+
 
 %% * 1. *Simulation of Scale*
 for i_scale=1:parm.n_scale % for each scale
@@ -342,7 +351,7 @@ for i_scale=1:parm.n_scale % for each scale
         end
     end
     
-    if strcmp(parm.k.method,'sbss'); k.sb.mask(:,:,hard_data_idx)=[]; end
+    % if strcmp(parm.k.method,'sbss'); k.sb.mask(:,:,hard_data_idx)=[]; end
     
     % Create the normal space result matrix and populate with known value
     Res{i_scale}.m_ns = repmat({nan(size(Res{i_scale}.m{1}))},parm.n_realisation,1);
@@ -401,7 +410,9 @@ for i_scale=1:parm.n_scale % for each scale
             pt.y = Res{i_scale}.sim.y_r{1}(i_pt);
             
             % Kriging system
+            t.tic.krig = tic;
             pt.krig = kriging(pt,Res{i_scale},Prim,k,parm,1);
+            t.toc.krig = [t.toc.krig; toc(t.tic.krig)];
             
             % Secondary Info
             % We first find the secondary value (and error) to create a
@@ -425,11 +436,13 @@ for i_scale=1:parm.n_scale % for each scale
             if ~parm.cstk
                 % Find the current point position on the grid{i_scale}.
                 % This is changing for each realisation
-                pt.y = Res{i_scale}.sim.x_r{i_realisation}(i_pt);
-                pt.x = Res{i_scale}.sim.y_r{i_realisation}(i_pt);
+                pt.x = Res{i_scale}.sim.x_r{i_realisation}(i_pt);
+                pt.y = Res{i_scale}.sim.y_r{i_realisation}(i_pt);
                 
                 % Kriging
-                pt.krig = kringing(pt,Res{i_scale},Prim,k,parm,i_realisation);
+                t.tic.krig = tic;
+                pt.krig = kriging(pt,Res{i_scale},Prim,k,parm,i_realisation);
+                t.toc.krig = [t.toc.krig; toc(t.tic.krig)];
                 
                 % Secondary Info
                 % 1. Option using Sec.std
@@ -464,7 +477,10 @@ for i_scale=1:parm.n_scale % for each scale
             %pt.sec.pdf(pt.sec.pdf==0)=eps; % if sec and krig don't have overlaps, put eps.
             %pt.krig.pdf(pt.krig.pdf==0)=eps;
             % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
-            pt.aggr.pdf = pt.sec.pdf.^(1-parm.aggr.fx(parm,grid,i_scale,i_pt)) .* pt.krig.pdf.^parm.aggr.fx(parm,grid,i_scale,i_pt);
+            w = aggr_fx(Res,parm,grid,i_realisation,i_scale,i_pt);
+            Res{i_scale}.sim.w(i_pt)=w;
+            %Res{i_scale}.sim.pool=parm.i_pool;
+            pt.aggr.pdf = pt.sec.pdf.^.5 .* pt.krig.pdf.^.5;
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -565,5 +581,41 @@ for i_scale=1:parm.n_scale % for each scale
 
 end
 t_out = t.toc;
+
+Res_out = Res{end};
+Res_out.sim = [];
+%Res_out.U = [];
+for i_scale=1:parm.n_scale
+    Res_out.sim = [Res_out.sim Res{i_scale}.sim];
+    %Res_out.sim = [Res_out.U Res{i_scale}.U];
+end
+
+
+
+end
+
+
+function w = aggr_fx(Res,parm,grid,i_realisation,i_scale,i_pt)
+
+%[i,j] = ind2sub(size(parm.aggr.A),i_realisation);
+% if ~isfield(parm,'i_pool')
+%     fsdfd
+%     parm.i_pool=i_realisation;
+% end
+i_w = mod(i_realisation,numel(parm.aggr.A));
+
+if i_w==0; 
+    i_w=numel(parm.aggr.A); 
+end
+
+
+
+a = parm.aggr.A(i_w);
+b = parm.aggr.B(i_w);
+x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+i_pt)./grid{end}.nxy;
+assert(x<=1,'error')
+w = parm.aggr.fx(a,b,x);
+
+% w = parm.aggr.w(i_realisation);
 
 end
