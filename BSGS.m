@@ -137,9 +137,9 @@ end
 k = parm.k;
 
 % Kernel parameter
-if ~isfield(parm, 'kernel_range') || ~isfield(parm.kernel_range, 'min') || ~isfield(parm.kernel_range, 'max')% range used in the kernel estimator
-    parm.kernel_range.min = [min(Sec.d(:))-.2*range(Sec.d(:)) min(Prim.d(:))-.2*range(Prim.d(:))];
-    parm.kernel_range.max = [max(Sec.d(:))+.2*range(Sec.d(:)) max(Prim.d(:))+.2*range(Prim.d(:))];
+if ~isfield(parm, 'kernel') || ~isfield(parm.kernel, 'range') || ~isfield(parm.kernel.range, 'min') || ~isfield(parm.kernel.range, 'max')% range used in the kernel estimator
+    parm.kernel.range.min = [min(Sec.d(:))-.2*range(Sec.d(:)) min(Prim.d(:))-.2*range(Prim.d(:))];
+    parm.kernel.range.max = [max(Sec.d(:))+.2*range(Sec.d(:)) max(Prim.d(:))+.2*range(Prim.d(:))];
 end
 
 % Plot
@@ -198,15 +198,18 @@ end
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
 % The joint pdf of the primary and secondary is build using a bivariate
 % kernel density estimator (Botev, Grotowski, & Kroese, 2010).
-if Prim.n~=0
-    kern = kernel(Prim, Sec, parm.kernel_range, parm.plot.kernel);
-else
+if isfield(parm.kernel, 'prim_true')
+    kern = kernel(parm.kernel.prim_true, Sec, parm.kernel.range, parm.plot.kernel);
+elseif Prim.n==0
     warning('No hard data !')
     assert(all(parm.p_w(1,:)==0),'The Secondary cannot be used !')
     kern.axis_prim=linspace(-5,5,100)';
     kern.axis_sec=kern.axis_prim;
     kern.dens=ones(100,100);
+else
+    kern = kernel(Prim, Sec, parm.kernel_range, parm.plot.kernel);
 end
+
 
 
 %% * 3. *NORMAL SCORE TRANSFORM*
@@ -315,6 +318,7 @@ function [Res_out,t_out]=BSGS_in(Prim, Sec, kern, k, Nscore, grid, parm)
 clear parm.k
 
 Res = cell(parm.n_scale,1);
+Res{end}.w=cell(parm.n_realisation,1);
 t.toc.scale = [];
 t.toc.cstk = [];
 t.toc.pt = [];
@@ -477,10 +481,9 @@ for i_scale=1:parm.n_scale % for each scale
             %pt.sec.pdf(pt.sec.pdf==0)=eps; % if sec and krig don't have overlaps, put eps.
             %pt.krig.pdf(pt.krig.pdf==0)=eps;
             % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
-            w = aggr_fx(Res,parm,grid,i_realisation,i_scale,i_pt);
-            Res{i_scale}.sim.w(i_pt)=w;
-            %Res{i_scale}.sim.pool=parm.i_pool;
-            pt.aggr.pdf = pt.sec.pdf.^.5 .* pt.krig.pdf.^.5;
+            w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt);
+            Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
+            pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -595,26 +598,27 @@ end
 end
 
 
-function w = aggr_fx(Res,parm,grid,i_realisation,i_scale,i_pt)
+function w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt)
 
-%[i,j] = ind2sub(size(parm.aggr.A),i_realisation);
-% if ~isfield(parm,'i_pool')
-%     fsdfd
-%     parm.i_pool=i_realisation;
-% end
-i_w = mod(i_realisation,numel(parm.aggr.A));
+switch parm.aggr.method
+    case 'AB'
+        i_w = mod(i_realisation,numel(parm.aggr.A));
+        if i_w==0; 
+            i_w=numel(parm.aggr.A); 
+        end
 
-if i_w==0; 
-    i_w=numel(parm.aggr.A); 
+        a = parm.aggr.A(i_w);
+        b = parm.aggr.B(i_w);
+        x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
+        assert(x<=1,'error')
+        w =(atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
+    case 'cst'
+        w=parm.aggr.w;
+    case 'rad'
+        w = 1-Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
+    otherwise
+        error('no Aggr method defined')  
 end
-
-
-
-a = parm.aggr.A(i_w);
-b = parm.aggr.B(i_w);
-x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+i_pt)./grid{end}.nxy;
-assert(x<=1,'error')
-w = parm.aggr.fx(a,b,x);
 
 % w = parm.aggr.w(i_realisation);
 

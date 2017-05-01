@@ -25,7 +25,7 @@ switch method
         
         %  positions of conditioning data
         
-        bor_pos_x = 1:floor(grid.nx/(k-1)):grid.nx;
+        bor_pos_x = round(linspace(1,grid.nx,k));
         bor_pos_y = 1:grid.ny;
         [x_x, x_y] = meshgrid(grid.x(bor_pos_x),grid.y(bor_pos_y));
         

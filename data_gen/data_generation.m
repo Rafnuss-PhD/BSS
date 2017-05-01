@@ -151,11 +151,11 @@ switch gen.method
         phi_true    = gen.mu + gen.std*fftma_perso(gen.covar, grid_gen);
         
         assert(all(phi_true(:)>0),'All phi_true are not greater than 0')
-        K_true_1      = f_Heinz(phi_true,6.66,4.97);
-        K_true_2      = f_Heinz(phi_true,7,4.5);
-        mask = fftma_perso(gen.covar, grid_gen);
-        K_true =K_true_1;
-        K_true(mask<0) = K_true_2(mask<0);
+        K_true      = f_Heinz(phi_true,6.66,4.97);
+%         K_true_2      = f_Heinz(phi_true,7,4.5);
+%         mask = fftma_perso(gen.covar, grid_gen);
+%         K_true =K_true_1;
+%         K_true(mask<0) = K_true_2(mask<0);
         sigma_true  = f_Archie(phi_true); % archie gives conductivity, I want resisitivitiy
         rho_true    = 1000./sigma_true;
 
@@ -168,27 +168,27 @@ sigma = sampling_pt(grid_gen,sigma_true,gen.samp,gen.samp_n);
  K    = sampling_pt(grid_gen,K_true,gen.samp,gen.samp_n);
  
 % Plot
-if gen.plotit
-    figure(1);clf; subplot(2,1,1); hold on;axis equal; title('Electrical Conductivity [mS/m]');xlabel('x [m]'); ylabel('y [m]')
-    imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar;  scatter(sigma.x,sigma.y,sigma.d); legend({'Sampled location'})
-    subplot(2,1,2); hold on; title('Histogram'); xlabel('Electrical Conductivity [mS/m]');
-    ksdensity(sigma_true(:)); ksdensity(sigma.d(:)); legend({'True','Sampled'})
-    
-    [gamma_x, gamma_y] = variogram_gridded_perso(sigma_true);
-    figure(2); clf; subplot(2,1,1); hold on; title('Horizontal (x) Variogram')
-    plot(grid_gen.x(1:end/2),gamma_x(1:end/2)./std(sigma_true(:))^2);
-    % plot([gen.covar.modele(1,2) gen.covar.modele(1,2)],[0 1])
-    plot(grid_gen.x(1:end/2),1-gen.covar.g(grid_gen.x(1:end/2)/gen.covar.range(1)),'linewidth',2)
-    subplot(2,1,2); hold on; title('Vertical (y) Variogram')
-    plot(grid_gen.y(1:end/2),gamma_y(1:end/2)./std(sigma_true(:))^2);
-    % plot([gen.covar.modele(1,3) gen.covar.modele(1,3)],[0 1])
-    plot(grid_gen.y(1:end/2),1-gen.covar.g(grid_gen.y(1:end/2)/gen.covar.range(2)),'linewidth',2)
-    
-    figure(3);
-    ksdensity([log(K_true(:)),sigma_true(:)])
-    
-    keyboard;close all; % try different initial data if wanted
-end
+% if gen.plotit
+%     figure(1);clf; subplot(2,1,1); hold on;axis equal; title('Electrical Conductivity [mS/m]');xlabel('x [m]'); ylabel('y [m]')
+%     imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar;  scatter(sigma.x,sigma.y,sigma.d); legend({'Sampled location'})
+%     subplot(2,1,2); hold on; title('Histogram'); xlabel('Electrical Conductivity [mS/m]');
+%     ksdensity(sigma_true(:)); ksdensity(sigma.d(:)); legend({'True','Sampled'})
+%     
+%     [gamma_x, gamma_y] = variogram_gridded_perso(sigma_true);
+%     figure(2); clf; subplot(2,1,1); hold on; title('Horizontal (x) Variogram')
+%     plot(grid_gen.x(1:end/2),gamma_x(1:end/2)./std(sigma_true(:))^2);
+%     % plot([gen.covar.modele(1,2) gen.covar.modele(1,2)],[0 1])
+%     plot(grid_gen.x(1:end/2),1-gen.covar.g(grid_gen.x(1:end/2)/gen.covar.range(1)),'linewidth',2)
+%     subplot(2,1,2); hold on; title('Vertical (y) Variogram')
+%     plot(grid_gen.y(1:end/2),gamma_y(1:end/2)./std(sigma_true(:))^2);
+%     % plot([gen.covar.modele(1,3) gen.covar.modele(1,3)],[0 1])
+%     plot(grid_gen.y(1:end/2),1-gen.covar.g(grid_gen.y(1:end/2)/gen.covar.range(2)),'linewidth',2)
+%     
+%     figure(3);
+%     ksdensity([log(K_true(:)),sigma_true(:)])
+%     
+%     keyboard;close all; % try different initial data if wanted
+% end
 
 [Sigma, gen] = Rho_generation(grid_gen,rho_true,gen); % 5. Simulate low-resolution grid_gen measurement of G
 Sigma        = Sens2std(Sigma,grid_gen,sigma);
@@ -196,7 +196,7 @@ Sigma        = Sens2std(Sigma,grid_gen,sigma);
 % Sigma.x         = grid_gen.x;
 % Sigma.y         = grid_gen.y;
 % Sigma.std       = 1+zeros(size(Sigma.d));
-
+[Sigma.X,Sigma.Y]=meshgrid(Sigma.x, Sigma.y);
 
 %% * 4.*SAVING*
 

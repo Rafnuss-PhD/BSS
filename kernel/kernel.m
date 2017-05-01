@@ -21,15 +21,18 @@ end
 
 
 % Find the colocated value of Prim in Sec.
-if all(Prim.y(:)==Sec.y) && all(Prim.x(:)==Sec.x)
-    data=[Sec.d Prim.d];
+if Prim.n==numel(Sec.xy) && all(Prim.y(:)==Sec.y) && all(Prim.x(:)==Sec.x)
+    krange.min = [min(Sec.d(:))-.2*range(Sec.d(:)) min(Prim.d(:))-.2*range(Prim.d(:))];
+    krange.max = [max(Sec.d(:))+.2*range(Sec.d(:)) max(Prim.d(:))+.2*range(Prim.d(:))];
+    data=[Sec.d(:) Prim.d(:)];
 else
-    data = nan(Prim.n,2);
+    kern.id=nan(Prim.n,1);
     for i=1:Prim.n
         [~,idy] = min((Prim.y(i)-Sec.y).^2);
         [~,idx] = min((Prim.x(i)-Sec.x).^2);
-        data(i,:)=[Sec.d(idy, idx) Prim.d(i)];
+        kern.id(i)= sub2ind(size(Sec.d),idy, idx);
     end
+    data=[Sec.d(kern.id) Prim.d];
 end
 
 % Number of point in the joint pdf
@@ -60,7 +63,7 @@ kern.dens(kern.dens<0) = 0;
 kern.dens = kern.dens./sum(kern.dens(:));
 
 % Compute the marginal distribution
-kern.prior = hist(Prim.d,kern.axis_prim)';
+kern.prior = hist(Prim.d(:),kern.axis_prim)';
 kern.prior = kern.prior./sum(kern.prior(:));
 
 % Plot
@@ -78,5 +81,8 @@ end
 
 % Check for error
 assert(sum(kern.dens(:))>0,'Error in the kernel esimator')
+[~,id] = min( (kern.axis_sec-min(Sec.d(:))).^2 );
+assert(sum(kern.dens(:,id))>10^(-10) ,'The current joint pdf is not suitable for the whole secondary variable range. add more collocated data.');
+
 
 end

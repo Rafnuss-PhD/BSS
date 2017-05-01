@@ -200,7 +200,7 @@ subplot(3,3,[1 3]); imagesc(Sigma.d); colorbar;
 subplot(3,3,[4 6]); imagesc(Res3Dmean); colorbar;
 
 [X,Y] = meshgrid(linspace(min(Sigma.d(:)),max(Sigma.d(:)),100), linspace(min(Res{1}.m{1}(:)),max(Res{1}.m{1}(:)),100));
-j1 = ksdensity([sigma.d(:) Klog.d],[X(:),Y(:)]);
+%FAUXj1 = ksdensity([sigma.d(:) Klog.d],[X(:),Y(:)]);
 j1 = reshape(j1,size(X,1),size(X,2));
 j2=nan(size(X,1),size(X,2), parm.n_realisation);
 for i_realisation=1:parm.n_realisation
@@ -213,7 +213,7 @@ subplot(3,3,9); imagesc(mean(j2,3)-j1)
 
 
 
-j1=[sigma.d(:) Klog.d];
+%FAUXj1=[sigma.d(:) Klog.d];
 j2=[];
 for i_realisation=1:1%parm.n_realisation
     j2 = [j2; Sigma.d(:) Res{1}.m{i_realisation}(:)];

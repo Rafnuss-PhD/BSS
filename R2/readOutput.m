@@ -34,7 +34,7 @@ if d.job_type == 1 % inverse solution
         end
     elseif d.res_matrix==2 % 2-true resolution matrix
         try
-            data=dlmread([d.filepath filename '_red.dat']);
+            data=dlmread([d.filepath filename '_rad.dat']);
             output.rad=flipud(reshape(data(:,3),grid_G.ny,grid_G.nx));
         catch
             output.rad=NaN;

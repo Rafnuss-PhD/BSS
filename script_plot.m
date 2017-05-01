@@ -121,12 +121,12 @@ figure;
 subplot(2,1,1); 
 imagesc(grid_gen.x,grid_gen.y,log(K_true));hold on; plot(sigma.x, sigma.y, 'or'); 
 xlabel('x[m]'); ylabel('y [m]'); colorbar;set(gca,'Ydir','reverse'); 
-title('True Hydraulic Conductivity [Log m/s] and well location'); axis equal tight
+title('True hydraulic conductivity [Log m/s]'); axis equal tight
 caxis([kern.axis_prim(1) kern.axis_prim(end)])
 subplot(2,1,2); 
 imagesc(grid_gen.x,grid_gen.y,Sigma.d); 
 xlabel('x[m]'); ylabel('y [m]');  colorbar;set(gca,'Ydir','reverse');
-title('Electrical Conductivity Tomography [mS/m]'); axis equal tight
+title('Electrical conductivity from ERT [mS/m]'); axis equal tight
 caxis([kern.axis_sec(1) kern.axis_sec(end)])
 
 % Histogram
@@ -181,7 +181,7 @@ shading flat;colorbar; caxis(caxis_limm); axis tight;set(gca,'Ydir','reverse'); 
 title([ 'True ',parm.unit ' X_{true}: \mu=' num2str(mean2(X_true)) ' | \sigma='   num2str(std2(X_true)) ' and X_{sampled}: \mu=' num2str(mean(X.d)) ' | \sigma='   num2str(std(X.d))]);
 for i_sim=2:mm*kk
     subplot(kk,mm,i_sim); 
-    pcolor(Y.x,Y.y,Y.m{i_sim-1});
+    pcolor(Y.x,Y.y,Y.m{i_sim-1+9});
     shading flat;colorbar;caxis(caxis_limm);axis tight;set(gca,'Ydir','reverse'); xlabel('x[m]');ylabel('y[m]');
     title(['Simmulated ', parm.unit, ': \mu=' num2str(mean2(Y.m{i_sim-1})) ' | \sigma=' num2str(std2(Y.m{i_sim-1})) ]);
 end
