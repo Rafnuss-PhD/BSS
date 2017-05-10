@@ -201,7 +201,7 @@ Sigma        = Sens2std(Sigma,grid_gen,sigma);
 %% * 4.*SAVING*
 
 if gen.saveit
-    filename = ['data_gen/data/GEN-', gen.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM'), '.mat'];
+    filename = ['data_gen/data/GEN-', gen.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM'),rand(), '.mat'];
     save(filename, 'phi_true', 'K_true', 'sigma_true', 'K', 'sigma', 'Sigma','grid_gen', 'gen')
 end
 

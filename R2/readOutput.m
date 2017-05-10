@@ -1,24 +1,18 @@
 function output=readOutput(d,grid_G)
 
 if d.job_type == 1 % inverse solution
-    i=d.max_iterations;
-    filename=['f001.' sprintf('%03d',i)];
-    while exist([filename '_res.dat'], 'file') == 0 && i>0
-        i=i-1;
-        filename=['f001.' sprintf('%03d',i)];
-    end
-    if i==0 && exist('f001_res.dat', 'file') == 0
+        
+    if exist([d.filepath 'f001_res.dat'], 'file')
+        data=dlmread([d.filepath 'f001_res.dat']);
+    elseif exist([d.filepath 'f001.' sprintf('%03d',d.max_iterations) '_res.dat'], 'file')
+        data=dlmread([d.filepath 'f001.' sprintf('%03d',d.max_iterations) '.dat']);
+    else 
         error('no file...')
-    else
-        filename='f001';
     end
     
     % read resistivity result
-    data=dlmread([filename '_res.dat']);
-    % output.x=unique(data(:,1));
-    % output.y=-unique(data(:,2));
     output.res=flipud(reshape(data(:,3),grid_G.ny,grid_G.nx));
-    
+
     % read error result
     data            = dlmread([d.filepath filename '_err.dat'],'',1,0);
     output.err      = data(:,1);

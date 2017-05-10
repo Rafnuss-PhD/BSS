@@ -188,10 +188,9 @@ switch gen.Rho.method
             % Sigma.sen           = f({grid_gen.y,grid_gen.x});
             
         elseif dmin.res_matrix ==  2 && any(~isnan(gen.Rho.i.output.res(:)))
-            Rho.sen_raw         = flipud(gen.Rho.i.output.res);
-            Sigma.sen_raw       = 1000./Sigma.sen_raw;
-            f                   = griddedInterpolant({grid_Rho.y,grid_Rho.x},Sigma.sen_raw,'nearest','nearest');
-            Sigma.sen           = f({grid.y,grid.x});
+            Sigma.rad_raw       = flipud(gen.Rho.i.output.rad);
+            f                   = griddedInterpolant({grid_Rho.y,grid_Rho.x},Sigma.rad_raw,'nearest','nearest');
+            Sigma.rad           = f({grid.y,grid.x});
         else
             Sigma.sen           = ones(size(grid.X));
         end

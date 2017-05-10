@@ -61,7 +61,7 @@
 
 function [Res, t, kern, k, parm, Nscore, filename] = BSGS(Prim,Sec,grid_gen,parm)
 t.global = tic;
-addpath(genpath('./.'))
+addpath('./kriging;./kernel;')
 
 %% * *INPUT CEHCKING*
 % This section of the code generates a valid parm structure based on the
@@ -120,7 +120,6 @@ end
 if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end % fit the variogram to the data or used the given one in parm.covar
 
 % Kriging parameter
-% Kriging parameter
 parm.k.covar = kriginginitiaite(parm.k.covar);
 if ~isfield(parm, 'nscore'),        parm.nscore        =1; end % use normal score (strongly advice to use it.)
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'method'),  parm.k.method = 'smart'; end
@@ -136,11 +135,6 @@ if ~isfield(parm, 'k') || ~isfield(parm.k, 'wradius')
 end
 k = parm.k;
 
-% Kernel parameter
-if ~isfield(parm, 'kernel') || ~isfield(parm.kernel, 'range') || ~isfield(parm.kernel.range, 'min') || ~isfield(parm.kernel.range, 'max')% range used in the kernel estimator
-    parm.kernel.range.min = [min(Sec.d(:))-.2*range(Sec.d(:)) min(Prim.d(:))-.2*range(Prim.d(:))];
-    parm.kernel.range.max = [max(Sec.d(:))+.2*range(Sec.d(:)) max(Prim.d(:))+.2*range(Prim.d(:))];
-end
 
 % Plot
 if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'bsgs'),  parm.plot.bsgs   =0; end
@@ -198,8 +192,18 @@ end
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
 % The joint pdf of the primary and secondary is build using a bivariate
 % kernel density estimator (Botev, Grotowski, & Kroese, 2010).
-if isfield(parm.kernel, 'prim_true')
-    kern = kernel(parm.kernel.prim_true, Sec, parm.kernel.range, parm.plot.kernel);
+if isfield(parm.kernel, 'dens')
+    kern=parm.kernel;
+    kern.axis_sec = kern.axis_sec(:);
+    kern.axis_prim = kern.axis_prim(:);
+    assert(isfield(kern, 'axis_sec'))
+    assert(isfield(kern, 'axis_prim'))
+%     if(~isfield(kern, 'n'))
+%         kern.n = 
+%     end
+    if(~isfield(kern, 'prior'))
+        kern.prior = sum(kern.dens,2);
+    end
 elseif Prim.n==0
     warning('No hard data !')
     assert(all(parm.p_w(1,:)==0),'The Secondary cannot be used !')
@@ -208,7 +212,7 @@ elseif Prim.n==0
     kern.dens=ones(100,100);
 else
     kern = kernel(Prim, Sec, parm.kernel_range, parm.plot.kernel);
-end
+end 
 
 
 
@@ -426,7 +430,7 @@ for i_scale=1:parm.n_scale % for each scale
             % pt.sec.sec_pdf = normpdf(kern.axis_sec, Sec.d(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x))  , Sec.std(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x)));
             
             % 2. Option 
-            pt.sec.sec_pdf = zeros(kern.n,1);
+            pt.sec.sec_pdf = zeros(numel(kern.axis_sec),1);
             [~,id] = min( (kern.axis_sec-Sec.d(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x))).^2 );
             pt.sec.sec_pdf(id) = 1;
             
@@ -484,6 +488,8 @@ for i_scale=1:parm.n_scale % for each scale
             w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt);
             Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
             pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
+            %pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1;
+            %pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -606,16 +612,26 @@ switch parm.aggr.method
         if i_w==0; 
             i_w=numel(parm.aggr.A); 
         end
-
         a = parm.aggr.A(i_w);
         b = parm.aggr.B(i_w);
         x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
         assert(x<=1,'error')
-        w =(atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
+        w = (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
     case 'cst'
         w=parm.aggr.w;
     case 'rad'
-        w = 1-Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
+        i_w = mod(i_realisation,numel(parm.aggr.x));
+        if i_w==0; 
+            i_w=numel(parm.aggr.x); 
+        end
+        lim = parm.aggr.x(i_w);
+        x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
+        if (x<lim)
+            w = Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
+            w = w-min(Sec.rad(:)) / (max(Sec.rad(:)) - min(Sec.rad(:)));
+        else
+            w=1;
+        end
     otherwise
         error('no Aggr method defined')  
 end

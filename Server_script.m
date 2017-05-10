@@ -1,6 +1,6 @@
 %% Setting 
 clear all
-load('result-BSS/GEN-test_2017-04-28_08-52');
+load('result-BSS/GEN-Run_1_2017-05-07_14-37');
 [Sigma.X,Sigma.Y]=meshgrid(Sigma.x, Sigma.y);
 addpath(genpath('./.'));
 parm.k.covar = gen.covar;
@@ -13,47 +13,44 @@ parm.par = 1;
 parm.k.nb = [0 0 0 0 0; 10 10 10 10 20];
 parm.cstk = 1;
 parm.seed = 'shuffle';
-parm.scale=[1:grid_gen.sx-1;1:grid_gen.sy-1 6 6 6]; % no multigrid
+parm.scale=[grid_gen.sx;grid_gen.sy]; % no multigrid
 parm.saveit = false;
 parm.k.method = 'sbss'; % sort, sbss (29.6) or smart minkmex
 parm.k.quad = 0;
 parm.k.wradius = 1.3;
 parm.plot.kernel=0;
-parm.plot.ns= 0;
+parm.plot.ns= 1;
 parm.plot.krig=0;
 parm.path='quasirandom';
 parm.path_random=1;
-parm.kernel.prim_true={};
-parm.kernel.prim_true.x = Sigma.x;
-parm.kernel.prim_true.y = Sigma.y;
-parm.kernel.prim_true.n = numel(Sigma.xy);
-parm.kernel.prim_true.d = log(K_true);
+parm.kernel=kern;
 
 
-parm.plot.krig=0;
+parm.plot.krig = 0;
 parm.par_n = 48;
 
 
 Klog=K;
 Klog.d=log(Klog.d);
 
-parm.n_realisation=0;parm.notify =0;
-[~,~,kern,~,~,~] =  BSGS(Klog,Sigma,grid_gen,parm);
-parm.notify=1;
+
+
+% parm.n_realisation=0;parm.notify =0;
+% [~,~,kern,~,~,~] =  BSGS(Klog,Sigma,grid_gen,parm);
+% parm.notify=1;
 
 
 Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
-[X,Y] = meshgrid(kern.axis_sec, kern.axis_prim);
-XY = [X(:),Y(:)];
+% [X,Y] = meshgrid(kern.axis_sec, kern.axis_prim);
+% XY = [X(:),Y(:)];
 %jpdf = ksdensity([Sigma.d(kern.id) Klog.d],XY);
-jpdf = ksdensity([Sigma.d(:) log(K_true(:))],XY);
-
+%jpdf = ksdensity([Sigma.d(:) log(K_true(:))],XY);
 
 
 %% work on the weight
 % parm.aggr.method='AB';
-% parm.aggr.a=[0 0.05 0.1 .2 .3 .5 .7 1];
-% parm.aggr.b=1;
+% parm.aggr.a=0:.1:1;%.01:.01:.19;
+% parm.aggr.b=5;
 % [parm.aggr.A, parm.aggr.B] = meshgrid(parm.aggr.a, parm.aggr.b);
 % parm.n_realisation  = parm.par_n*numel(parm.aggr.A)*4;
 % figure(929);hold on;
@@ -67,44 +64,61 @@ jpdf = ksdensity([Sigma.d(:) log(K_true(:))],XY);
 %     end
 % end
 
-parm.n_realisation  = parm.par_n*4;
-parm.aggr.method='cst';
-parm.aggr.w=0;
-%
-% 
-% parm.aggr.method='rad';
 % parm.n_realisation  = parm.par_n*4;
+% parm.aggr.method='cst';
+% parm.aggr.w=-1;
 
+ 
+parm.aggr.method='rad';
+parm.aggr.x=0:.05:1;%.01:.01:.19;
+parm.n_realisation  = parm.par_n*numel(parm.aggr.x)*4;
  
 
 [Res,~,kern,~,~,Nscore] =  BSGS(Klog,Sigma,grid_gen,parm);
 
-Sigma_d = Sigma.d(any( bsxfun(@eq,Sigma.X(:),Res.X(:)') & bsxfun(@eq,Sigma.Y(:),Res.Y(:)' ),2));
+
+% Sigma_d = Sigma.d(any( bsxfun(@eq,Sigma.X(:),Res.X(:)') & bsxfun(@eq,Sigma.Y(:),Res.Y(:)' ),2));
 id = Res.x<parm.k.covar(1).range0(1).*parm.k.wradius;
-Gamma_t = Gamma_t( any( bsxfun(@eq, grid_gen.x,Res.x(id)) ));
+Gamma_t_id = Gamma_t( any( bsxfun(@eq, grid_gen.x,Res.x(id)) ));
 
 E1 = nan(sum(id),parm.n_realisation);
-E2 = nan(numel(jpdf),parm.n_realisation);
+E2 = nan(numel(parm.kernel.dens),parm.n_realisation);
     
+XY = kern.XY;
+Sigma_d = Sigma.d(:);
+Res_m_ns = Res.m_ns;
+Res_m = Res.m;
+dens = parm.kernel.dens(:);
 parfor i_realisation=1:parm.n_realisation
-   gamma_x = variogram_gridded_perso(Res.m_ns{i_realisation}./std(Res.m_ns{i_realisation}(:)));
-   E1(:,i_realisation) = gamma_x(id)-Gamma_t;
-   E2(:,i_realisation) = ksdensity([Sigma_d Res.m{i_realisation}(:)],XY)-jpdf;
+   gamma_x = variogram_gridded_perso(Res_m_ns{i_realisation});
+   E1(:,i_realisation) = gamma_x(id)-Gamma_t_id;
+   E2(:,i_realisation) = ksdensity([Sigma_d Res_m{i_realisation}(:)],XY)-dens;
 end
 
-% parfor i_ab = 1:numel(parm.aggr.A)
-%     idAB=i_ab:numel(parm.aggr.A):parm.n_realisation;
-%     OF1(i_ab) = sqrt(mean(mean(E1(:,idAB),2).^2));
-%     OF2(i_ab) = sqrt(mean(mean(E2(:,idAB),2).^2));
-% end
+try 
+    if strcmp(parm.aggr.method,'AB')
+        parfor i_ab = 1:numel(parm.aggr.A)
+            idAB=i_ab:numel(parm.aggr.A):parm.n_realisation;
+            OF1(i_ab) = sqrt(mean(mean(E1(:,idAB),2).^2));
+            OF2(i_ab) = sqrt(mean(mean(E2(:,idAB),2).^2));
+        end
+    elseif strcmp(parm.aggr.method,'rad')
+        parfor i_x = 1:numel(parm.aggr.x)
+            idx=i_x:numel(parm.aggr.x):parm.n_realisation;
+            OF1(i_x) = sqrt(mean(mean(E1(:,idx),2).^2));
+            OF2(i_x) = sqrt(mean(mean(E2(:,idx),2).^2));
+        end
+    else
+        OF1 = sqrt(mean(mean(E1,2).^2));
+        OF2 = sqrt(mean(mean(E2,2).^2));
+    end
+catch
+    save('result-BSS/ResRAD_X_Norm.mat','Res','parm','kern','Nscore','E1','E2')
+end
 
-
-OF1 = sqrt(mean(mean(E1,2).^2));
-OF2 = sqrt(mean(mean(E2,2).^2));
-
-    
-save('result-BSS/ResCst0.mat','Res','parm','kern','Nscore','E1','E2','OF1','OF2')
+save('result-BSS/ResRAD_X_Norm.mat','Res','parm','kern','Nscore','E1','E2','OF1','OF2')
 %save('result-BSS/ResAB_A_1.mat','parm','E1','E2')
+% save('C:\Users\Raphael\Desktop\to be compress\ResRAD_AB.mat','Res','parm','kern','Nscore','E1','E2','OF1','OF2')
 
 
 %% Calibration

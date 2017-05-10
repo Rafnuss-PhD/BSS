@@ -72,7 +72,49 @@ gen.seed                = 'default';
 data_generation(gen);
 %[fieldname, grid_gen, K_true, phi_true, sigma_true, K, sigma, Sigma, gen] = data_generation(gen);
 
+%% Create joint-pdf
+file='GEN-Run_1_2017-05-07_14-37';
+files={'GEN-Run_2_2017-05-07_21-56','GEN-Run_3_2017-05-06_18-21','GEN-Run_4_2017-05-07_17-17','GEN-Run_5_2017-05-07_22-56','GEN-Run_6_2017-05-07_21-08','GEN-Run_7_2017-05-07_21-04'};
 
+load(['result-BSS/' file],'K_true','Sigma');
+
+% Correct
+% grid_G=gen.Rho.grid;
+% for i_files = 1: numel(files)
+%     data=dlmread(['Y:\BSGS\result-BSS\data_gen\Run_' num2str(i_files+1) '\IO-file\f001_res.dat']);
+%     output.res=flipud(reshape(data(:,3),grid_G.ny,grid_G.nx));
+%     Rho.d_raw           = flipud(output.res);
+%     f                   = griddedInterpolant({grid_G.y,grid_G.x},Rho.d_raw,'nearest','nearest');
+%     Rho.d               = f({grid_gen.y,grid_gen.x});
+%     Sigma.d             = 1000./Rho.d;
+%     Sigma.d_raw         = 1000./Rho.d_raw;
+%     save(['result-BSS/' files{i_files}],'-append','Sigma');
+% end
+
+% Scott's rules
+dS = 3.5*std(Sigma.d(:))*numel(Sigma.d)^(-1/3);
+dK = 3.5*std(log(K_true(:)))*numel(log(K_true))^(-1/3);
+
+kern.axis_sec = (min(Sigma.d(:))-.2*range(Sigma.d(:))):dS:(max(Sigma.d(:))+.2*range(Sigma.d(:)));
+kern.axis_prim = (min(log(K_true(:)))-.2*range(log(K_true(:)))):dK:(max(log(K_true(:)))+.2*range(log(K_true(:))));
+[X,Y] = meshgrid(kern.axis_sec, kern.axis_prim);
+kern.XY = [X(:),Y(:)];
+
+for i_files = 1: numel(files)
+    load(['result-BSS/' files{i_files}],'K_true','Sigma');
+    jpdf(:,:,i_files) = ksdensity([Sigma.d(:) log(K_true(:))],kern.XY);
+end
+
+for i_files = 1: numel(files)
+    figure;
+    imagesc( reshape(jpdf(:,:,i_files),numel(kern.axis_prim), numel(kern.axis_sec)));
+end
+
+kern.dens = reshape(mean(jpdf,3),numel(kern.axis_prim), numel(kern.axis_sec));
+
+
+
+save(['result-BSS/' file],'-append','kern');
 
 %% BSGS
 % Generation of the high resolution electrical conductivity (sSigma) from
