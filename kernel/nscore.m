@@ -1,6 +1,3 @@
-
-
-
 %% NSCORE_PERSO
 % This function is computing the Normal zscore transform of the input
 % vector the function return two fonction handle : one for the normal transform
@@ -19,8 +16,110 @@
 % * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
 % * *Date:* 29.01.2015
 
-function Nscore = nscore(X,support_dist,method,extrapolationMethod,plotit)
+function Nscore = nscore(kern, parm, plotit) % X,support_dist,method,extrapolationMethod,plotit
 
+
+
+if parm.nscore
+   
+    prior = kern.prior./sum(kern.prior);
+    prior(prior<eps)=2*eps;
+    cdf = cumsum(prior) ./sum(prior);
+    
+    Nscore.T_F = griddedInterpolant(kern.axis_prim,cdf,'pchip','pchip');
+    Nscore.Tinv_F = griddedInterpolant(cdf,kern.axis_prim,'pchip','pchip');
+
+    Nscore.inverse = @(y) Nscore.Tinv_F(normcdf(y)); % back-transform a value in normal space by taking the normcdf.
+    Nscore.forward = @(y) norminv( Nscore.T_F(y) );
+    
+    kernel_y_ns = norminv(cdf);
+    kernel_y_ns_mid = ( kernel_y_ns(1:end-1)+kernel_y_ns(2:end) ) /2;
+    Nscore.dist = @(mu,sigma) [ normcdf(kernel_y_ns_mid,mu,sigma) ; 1] - [0 ; normcdf(kernel_y_ns_mid(),mu,sigma)]; 
+
+else
+    Nscore.forward = @(x) x';
+    Nscore.inverse = @(x) x';
+    Nscore.dist    = @(mu,sigma) normpdf(kern.axis_sec,mu,sigma)/sum(normpdf(kern.axis_sec,mu,sigma));
+end
+
+
+
+
+
+return
+%% NOTE:
+% Here are 6 Method to compute the transform and back transform
+% A:  input vector
+% B: Normal z-score of A
+% b: point of a std normal distribution
+% a: the back transform of b
+
+
+% Method 1: Inital script from Paolo
+B=nscoretool(A);
+nt=length(A);
+zmin=min(b);
+zmax=max(b);
+ltail=2;
+ltpar=2;
+utail=1;
+utpar=2;
+a=backtrtool_pr(b,nt,A,B,zmin,zmax,ltail,ltpar,utail,utpar);
+
+plot(A,B,'o')
+
+
+
+% Method 2: mGstat toolbox
+% w1,dmin : Extrapolation options for lower tail. w1=1 -> linear interpolation, w1>1 -> Gradual power interpolation
+% w2,dmax : Extrapolation options for lower tail. w1=1 -> linear interpolation, w1<1 -> Gradual power interpolation
+% DoPlot : plot
+% d_nscore : normal score transform of input data
+% o_nscore : normal socre object containing information needed to perform normal score backtransform.
+[B,o_nscore]=nscore(A,w1,w2,dmin,dmax);
+a=inscore(b,o_nscore);
+
+
+
+% Method 3. ECDF
+CDF_inv=norminv(ecdf(A));
+B = CDF_inv(tiedrank(A));
+a=quantile(A,normcdf(b));
+
+
+
+% Method 4. TieRank
+B = norminv( tiedrank(A)/(numel(A)+1));
+a=quantile(A,normcdf(b));
+
+
+
+% Method 5. http://ch.mathworks.com/help/stats/examples/nonparametric-estimates-of-cumulative-distribution-functions-and-their-inverses.html#zmw57dd0e1074
+[Bi,xi] = ecdf(A);
+n=numel(A);
+xj = xi(2:end);
+Bj = (Bi(1:end-1)+Bi(2:end))/2;
+xj = [xj(1)-Bj(1)*(xj(2)-xj(1))/((Bj(2)-Bj(1)));  xj;  xj(n)+(1-Bj(n))*((xj(n)-xj(n-1))/(Bj(n)-Bj(n-1)))];
+Bj = [0; Bj; 1];
+
+F    = @(y) norminv(interp1(xj,Bj,y,'linear','extrap'));
+Finv = @(u) normcdf(interp1(Bj,xj,u,'linear','extrap'));
+
+B=norminv(F(A));
+a=Finv(normcdf(b));
+
+
+
+
+% Method 6. http://ch.mathworks.com/help/stats/examples/nonparametric-estimates-of-cumulative-distribution-functions-and-their-inverses.html#zmw57dd0e1147
+Fy = ksdensity(A, A, 'function','cdf', 'width',.35);
+Finv = @(u) interp1(Fy,y,u,'linear','extrap');
+
+B=norminv(Fy);
+a=Finv(normcdf(b));
+
+
+% Method 7 Complexe
 % Compute the empirical cdf
 [ft,xt] = ecdf(X);
 
@@ -111,32 +210,6 @@ Nscore.inverse = @(y) Nscore.Tinv_F(normcdf(y)); % back-transform a value in nor
 Nscore.forward = @(y) norminv( Nscore.T_F(y) );
 
 
-
-
-if plotit
-    figure;
-    subplot(1,2,1);hist(X); legend(['\mu=' num2str(mean(X)) ' | \sigma=' num2str(std(X))])
-    subplot(1,2,2);hist(Nscore.forward(X)); legend(['\mu=' num2str(mean(Nscore.forward(X))) ' | \sigma=' num2str(std(Nscore.forward(X)))])
-    
-    figure; hold on;
-    plot(support_dist,Nscore.forward(support_dist))
-    plot(X,Nscore.forward(X),'o')
-    xlabel('Initial Space');ylabel('Normal Space');
-    legend('support_dist','Hard data X')
-    
-    figure; hold on;
-    [f,x]=hist(X,20); plot(x,f/trapz(x,f));
-    [f,x]=hist(Nscore.inverse(randn(400,1)),20); plot(x,f/trapz(x,f));
-    xlabel('x'); ylabel('pdf(x)'); legend('Hard data X', 'Nscore.inverse(randn(1000,1))')
-    
-    figure; hold on;
-    ecdf(X)
-    ecdf(Nscore.inverse(randn(400,1)))
-    ecdf(Nscore.inverse(randn(10000,1)))
-    legend('Hard data X', 'Nscore.inverse(randn(400,1))','Nscore.inverse(randn(10000,1))')
-end
-
-
 % Kriging generate a mean and standard deviation in the std normal space.
 % We want to transform this std normal distribution in the original space.
 % The final distribution is on the grid of support_dist. Therefore we compute
@@ -153,149 +226,5 @@ kernel_y_ns = Nscore.forward(support_dist);
 kernel_y_ns_mid = ( kernel_y_ns(1:end-1)+kernel_y_ns(2:end) ) /2;
 Nscore.dist = @(mu,sigma) [ normcdf(kernel_y_ns_mid,mu,sigma) ; 1] - [0 ; normcdf(kernel_y_ns_mid(),mu,sigma)];
 
-
-
-
-if plotit
-
-    figure;
-    x=6.2;
-    h1=subplot(1,2,1);hold on
-    ecdf(X);xlabel('x-original');ylabel('CDF(x)'); xlim([support_dist(1) support_dist(end)])
-    plot(x,Nscore.T_F(x),'.r', 'MarkerSize',40)
-    line([x x],[0 Nscore.T_F(x)],'Color','k')
-    line([x support_dist(end)],[Nscore.T_F(x) Nscore.T_F(x)],'Color','k')
-    ax = gca; ax.XTick = sort([ax.XTick ,x]); h1.Position(3)=h1.Position(3)+0.03;
-    
-    h2=subplot(1,2,2);hold on
-    plot(-5:0.1:5,normcdf(-5:0.1:5))
-    plot(Nscore.forward(x), Nscore.T_F(x),'.r', 'MarkerSize',40)
-    line([-5 Nscore.forward(x)],[Nscore.T_F(x) Nscore.T_F(x)],'Color','k')
-    line([Nscore.forward(x) Nscore.forward(x)],[0 Nscore.T_F(x)],'Color','k')
-    xlabel('x-Normal Score Transform');ylabel('Standard Normal CDF(x)'); xlim([-5 5])
-    ax = gca; ax.XTick = sort([ax.XTick ,Nscore.forward(x)]);ax.YAxisLocation='right';
-    h2.Position(1)=h2.Position(1)-0.03;
-
-    
-    %%
-    mu= 0.4210;
-    sigma=1.0044;
-    idx=1:20:kernel.n;
-    
-    figure;
-    
-    subplot(2,2,1);hold on
-    ecdf(X);xlabel('x');ylabel('cdf(x)'); xlim([support_dist(1) support_dist(end)])
-    plot(support_dist(idx),Nscore.T_F(support_dist(idx)),'.r', 'MarkerSize',20)
-    for i=idx
-        line([support_dist(i) support_dist(i)],[0 Nscore.T_F(support_dist(i))],'Color',[0.4,0.4,0.4])
-        line([support_dist(i) support_dist(end)],[Nscore.T_F(support_dist(i)) Nscore.T_F(support_dist(i))],'Color',[0.4,0.4,0.4])
-    end
-    
-    subplot(2,2,2);hold on
-    plot(-5:0.1:5,normcdf(-5:0.1:5))
-    xlabel('x');ylabel('Std Normal cdf(x)'); xlim([-5 5])
-    for i=idx
-        line([-5 norminv(Nscore.T_F(support_dist(i)))],[Nscore.T_F(support_dist(i)) Nscore.T_F(support_dist(i))],'Color',[0.4,0.4,0.4])
-        line([norminv(Nscore.T_F(support_dist(i))) norminv(Nscore.T_F(support_dist(i)))],[0 Nscore.T_F(support_dist(i))],'Color',[0.4,0.4,0.4])
-    end
-    plot(norminv(Nscore.T_F(support_dist(idx))),Nscore.T_F(support_dist(idx)),'.r', 'MarkerSize',20)
-    subplot(2,2,3);hold on
-    hist(X);xlabel('x');ylabel('pdf(x)'); xlim([support_dist(1) support_dist(end)])
-    ax = gca;ax.YAxisLocation='right';
-    
-    subplot(2,2,4); hold on;
-    plot(-5:0.1:5,normpdf(-5:0.1:5,mu,sigma));
-    plot(Nscore.forward(support_dist(idx)),normpdf(Nscore.forward(support_dist(idx)),mu,sigma),'.r', 'MarkerSize',20)
-    for i=idx
-        line([Nscore.forward(support_dist(i)) Nscore.forward(support_dist(i))],[0 normpdf(Nscore.forward(support_dist(i)),mu,sigma)],'Color','k')
-    end
-    
-    for i=1:length(idx)-1
-        u=linspace(Nscore.forward(support_dist(idx(i))),Nscore.forward(support_dist(idx(i+1))),20);
-        area([u  Nscore.forward(support_dist(idx(i+1))) Nscore.forward(support_dist(idx(i))) ],...
-            [normpdf(u,mu,sigma)  0 0])
-    end
-    set(gca,'Ydir','reverse'); xlim([-5 5])
-    
-    
-    
-    %% 
-
-end
-
-
-return
-%% NOTE:
-% Here are 6 Method to compute the transform and back transform
-% A:  input vector
-% B: Normal z-score of A
-% b: point of a std normal distribution
-% a: the back transform of b
-
-hold on;
-
-% Method 1: Inital script from Paolo
-B=nscoretool(A);
-nt=length(A);
-zmin=min(b);
-zmax=max(b);
-ltail=2;
-ltpar=2;
-utail=1;
-utpar=2;
-a=backtrtool_pr(b,nt,A,B,zmin,zmax,ltail,ltpar,utail,utpar);
-
-plot(A,B,'o')
-
-
-
-% Method 2: mGstat toolbox
-% w1,dmin : Extrapolation options for lower tail. w1=1 -> linear interpolation, w1>1 -> Gradual power interpolation
-% w2,dmax : Extrapolation options for lower tail. w1=1 -> linear interpolation, w1<1 -> Gradual power interpolation
-% DoPlot : plot
-% d_nscore : normal score transform of input data
-% o_nscore : normal socre object containing information needed to perform normal score backtransform.
-[B,o_nscore]=nscore(A,w1,w2,dmin,dmax);
-a=inscore(b,o_nscore);
-
-
-
-% Method 3. ECDF
-CDF_inv=norminv(ecdf(A));
-B = CDF_inv(tiedrank(A));
-a=quantile(A,normcdf(b));
-
-
-
-% Method 4. TieRank
-B = norminv( tiedrank(A)/(numel(A)+1));
-a=quantile(A,normcdf(b));
-
-
-
-% Method 5. http://ch.mathworks.com/help/stats/examples/nonparametric-estimates-of-cumulative-distribution-functions-and-their-inverses.html#zmw57dd0e1074
-[Bi,xi] = ecdf(A);
-n=numel(A);
-xj = xi(2:end);
-Bj = (Bi(1:end-1)+Bi(2:end))/2;
-xj = [xj(1)-Bj(1)*(xj(2)-xj(1))/((Bj(2)-Bj(1)));  xj;  xj(n)+(1-Bj(n))*((xj(n)-xj(n-1))/(Bj(n)-Bj(n-1)))];
-Bj = [0; Bj; 1];
-
-F    = @(y) norminv(interp1(xj,Bj,y,'linear','extrap'));
-Finv = @(u) normcdf(interp1(Bj,xj,u,'linear','extrap'));
-
-B=norminv(F(A));
-a=Finv(normcdf(b));
-
-
-
-
-% Method 6. http://ch.mathworks.com/help/stats/examples/nonparametric-estimates-of-cumulative-distribution-functions-and-their-inverses.html#zmw57dd0e1147
-Fy = ksdensity(A, A, 'function','cdf', 'width',.35);
-Finv = @(u) interp1(Fy,y,u,'linear','extrap');
-
-B=norminv(Fy);
-a=Finv(normcdf(b));
 
 end

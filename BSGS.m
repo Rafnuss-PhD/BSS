@@ -98,17 +98,6 @@ if ~isfield(parm, 'scale')
     parm.scale(1,parm.scale(1,:)>grid_gen.sx) = grid_gen.sx;
     parm.scale(2,parm.scale(2,:)>grid_gen.sy) = grid_gen.sy;
 end
-% if ~isfield(parm, 'p_w')
-%     parm.p_w     = repmat(0.5, 2, size(parm.scale,2));
-% elseif size(parm.p_w,1)==1
-%     parm.p_w     = [parm.p_w ; 1-parm.p_w ];
-% end
-% if size(parm.p_w,2)==1
-%     parm.p_w     = repmat(parm.p_w, 1,size(parm.scale,2));
-% elseif size(parm.p_w,2)==2
-%     parm.p_w     = [linspace(parm.p_w(1,1), parm.p_w(1,2),size(parm.scale,2)); linspace(parm.p_w(2,1), parm.p_w(2,2),size(parm.scale,2))];
-% end
-% assert(size(parm.p_w,1)==2 & size(parm.p_w,2)==size(parm.scale,2))
 if ~isfield(parm, 'cstk_s') % cstk_s is the scale at which cst is switch on
     if ~isfield(parm, 'cstk'),      parm.cstk           = 1; end % constant path and kriging weight activated or not
     if parm.cstk
@@ -134,7 +123,6 @@ if ~isfield(parm, 'k') || ~isfield(parm.k, 'wradius')
     parm.k.wradius  = Inf;
 end
 k = parm.k;
-
 
 % Plot
 if ~isfield(parm, 'plot') || ~isfield(parm.plot, 'bsgs'),  parm.plot.bsgs   =0; end
@@ -190,29 +178,7 @@ if strcmp(parm.k.method,'sbss')
 end
 
 %% * 2. *NON-PARAMETRIC RELATIONSHIP*
-% The joint pdf of the primary and secondary is build using a bivariate
-% kernel density estimator (Botev, Grotowski, & Kroese, 2010).
-if isfield(parm.kernel, 'dens')
-    kern=parm.kernel;
-    kern.axis_sec = kern.axis_sec(:);
-    kern.axis_prim = kern.axis_prim(:);
-    assert(isfield(kern, 'axis_sec'))
-    assert(isfield(kern, 'axis_prim'))
-%     if(~isfield(kern, 'n'))
-%         kern.n = 
-%     end
-    if(~isfield(kern, 'prior'))
-        kern.prior = sum(kern.dens,2);
-    end
-elseif Prim.n==0
-    warning('No hard data !')
-    assert(all(parm.p_w(1,:)==0),'The Secondary cannot be used !')
-    kern.axis_prim=linspace(-5,5,100)';
-    kern.axis_sec=kern.axis_prim;
-    kern.dens=ones(100,100);
-else
-    kern = kernel(Prim, Sec, parm.kernel_range, parm.plot.kernel);
-end 
+kern = kernel(Prim, Sec, parm.kernel,parm.plot.kernel);
 
 
 
@@ -223,13 +189,8 @@ end
 % transform of the prior normal distribution function is also created
 % (return the pdf in the initial space from the mean and variance in the
 % normal space)
-if parm.nscore && Prim.n~=0
-    Nscore = nscore(Prim.d, kern.axis_prim, 'pchip', 'pchip', parm.plot.ns);
-else
-    Nscore.forward = @(x) x';
-    Nscore.inverse = @(x) x';
-    Nscore.dist    = @(mu,sigma) normpdf(kern.axis_sec,mu,sigma)/sum(normpdf(kern.axis_sec,mu,sigma));
-end
+
+Nscore = nscore(kern, parm, parm.plot.ns); %Prim.d, kern.axis_prim, 'pchip', 'pchip', parm.plot.ns
 
 % Create the normal space primary variable of known data
 Prim.d_ns = Nscore.forward(Prim.d);

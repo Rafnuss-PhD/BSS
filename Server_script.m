@@ -27,7 +27,7 @@ parm.kernel=kern;
 
 
 parm.plot.krig = 0;
-parm.par_n = 48;
+parm.par_n = 4;
 
 
 Klog=K;
@@ -64,14 +64,14 @@ Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
 %     end
 % end
 
-% parm.n_realisation  = parm.par_n*4;
-% parm.aggr.method='cst';
-% parm.aggr.w=-1;
+parm.n_realisation  = parm.par_n*4;
+parm.aggr.method='cst';
+parm.aggr.w=1;
 
  
-parm.aggr.method='rad';
-parm.aggr.x=0:.05:1;%.01:.01:.19;
-parm.n_realisation  = parm.par_n*numel(parm.aggr.x)*4;
+% parm.aggr.method='rad';
+% parm.aggr.x=0:.05:1;%.01:.01:.19;
+% parm.n_realisation  = parm.par_n*numel(parm.aggr.x)*4;
  
 
 [Res,~,kern,~,~,Nscore] =  BSGS(Klog,Sigma,grid_gen,parm);
