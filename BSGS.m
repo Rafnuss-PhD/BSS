@@ -447,10 +447,16 @@ for i_scale=1:parm.n_scale % for each scale
             % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
             w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt);
             Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
+<<<<<<< HEAD
             %pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
             %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
             pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1;
             pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
+=======
+            pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
+            %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
+            %pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1; pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
+>>>>>>> origin/Standard
 
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
@@ -527,7 +533,7 @@ for i_scale=1:parm.n_scale % for each scale
                 plot( kern.axis_prim,pt.aggr.pdf)
                 plot(  kern.axis_prim, max(pt.aggr.pdf)*pt.aggr.cdf)
                 plot([pt.sampled pt.sampled],[0 max(pt.aggr.pdf)],'k')
-                legend(['Kriging, w=' num2str(parm.aggr.fx(parm,i_scale,i_pt))], ['Secondary, w=' num2str(parm.aggr.fx(parm,i_scale,i_pt))],'Aggregated','Aggreag. cdf','sampled location')
+                legend(['Kriging, w=' num2str(w)], ['Secondary, w=' num2str(1-w)],'Aggregated','Aggreag. cdf','sampled location')
                 
                 
                 subplot(3,2,6); hold on;
