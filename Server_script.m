@@ -9,6 +9,7 @@ parm.k.covar = gen.covar;
 parm.unit='';
 parm.nscore = 1;
 parm.par = 1;
+parm.par_n = 4;
 
 parm.k.nb = [0 0 0 0 0; 10 10 10 10 20];
 parm.cstk = 1;
@@ -27,7 +28,6 @@ parm.kernel=kern;
 
 
 parm.plot.krig = 0;
-parm.par_n = 4;
 
 
 Klog=K;
@@ -64,18 +64,36 @@ Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
 %     end
 % end
 
-parm.n_realisation  = parm.par_n*4;
-parm.aggr.method='cst';
-parm.aggr.w=1;
+% filename = 'ResCst11111';
+% parm.par_n = 1;
+% parm.aggr.method='cst';
+% parm.n_realisation  = parm.par_n;
+% parm.aggr.w=1;
+
+filename = 'ResRAD';
+parm.aggr.method='rad';
+parm.aggr.a=[1 10 100];
+parm.aggr.b=[10 100 500 1000];
+[parm.aggr.A, parm.aggr.B] = meshgrid(parm.aggr.a, parm.aggr.b);
+parm.n_realisation  = parm.par_n*numel(parm.aggr.A)*4;
+
+% rad=Sigma.rad(randperm(length(Sigma.rad)));
+% figure; hold on;
+% for i_a=1:numel(parm.aggr.a)
+%     a=parm.aggr.a(i_a);
+%     for i_b=1:numel(parm.aggr.b)
+%         b=parm.aggr.b(i_b);
+%         w = 1-rad.*(a-b.*linspace(0,1,numel(rad)));
+%         w(w<0) = 0;
+%         w(w>1) = 1;
+%         plot(w)
+%     end
+% end
 
  
-% parm.aggr.method='rad';
-% parm.aggr.x=0:.05:1;%.01:.01:.19;
-% parm.n_realisation  = parm.par_n*numel(parm.aggr.x)*4;
- 
-
+disp('Setup ok, Start')
 [Res,~,kern,~,~,Nscore] =  BSGS(Klog,Sigma,grid_gen,parm);
-
+disp('Run finished')
 
 % Sigma_d = Sigma.d(any( bsxfun(@eq,Sigma.X(:),Res.X(:)') & bsxfun(@eq,Sigma.Y(:),Res.Y(:)' ),2));
 id = Res.x<parm.k.covar(1).range0(1).*parm.k.wradius;
@@ -113,10 +131,11 @@ try
         OF2 = sqrt(mean(mean(E2,2).^2));
     end
 catch
-    save('result-BSS/ResRAD_X_Norm.mat','Res','parm','kern','Nscore','E1','E2')
+    save(['result-BSS/' filename],'Res','parm','kern','Nscore','E1','E2')
 end
 
-save('result-BSS/ResRAD_X_Norm.mat','Res','parm','kern','Nscore','E1','E2','OF1','OF2')
+save(['result-BSS/' filename],'Res','parm','kern','Nscore','E1','E2','OF1','OF2')
+disp('file written')
 %save('result-BSS/ResAB_A_1.mat','parm','E1','E2')
 % save('C:\Users\Raphael\Desktop\to be compress\ResRAD_AB.mat','Res','parm','kern','Nscore','E1','E2','OF1','OF2')
 

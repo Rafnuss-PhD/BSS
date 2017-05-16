@@ -27,6 +27,9 @@ if isfield(parm, 'dens') % Kernel Given
         kern.prior = parm.prior;
     end
     
+    [X,Y] = meshgrid(kern.axis_sec, kern.axis_prim);
+    kern.XY = [X(:),Y(:)];
+    
     
 elseif Prim.n==0 % Not possible to built one.
     warning('No hard data !')
@@ -34,6 +37,8 @@ elseif Prim.n==0 % Not possible to built one.
     kern.axis_prim=linspace(-5,5,100)';
     kern.axis_sec=kern.axis_prim;
     kern.dens=ones(100,100);
+    [X,Y] = meshgrid(kern.axis_sec, kern.axis_prim);
+    kern.XY = [X(:),Y(:)];
     
     
 else % Build from hard data
@@ -63,12 +68,10 @@ else % Build from hard data
         data=[Sec.d(kern.id) Prim.d];
     end 
 
-    
     kern.dens = ksdensity(data,kern.XY);
     kern.prior = sum(kern.dens,2);
     
 end 
-
 
 
 

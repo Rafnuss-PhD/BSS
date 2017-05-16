@@ -189,7 +189,6 @@ kern = kernel(Prim, Sec, parm.kernel,parm.plot.kernel);
 % transform of the prior normal distribution function is also created
 % (return the pdf in the initial space from the mean and variance in the
 % normal space)
-
 Nscore = nscore(kern, parm, parm.plot.ns); %Prim.d, kern.axis_prim, 'pchip', 'pchip', parm.plot.ns
 
 % Create the normal space primary variable of known data
@@ -448,9 +447,11 @@ for i_scale=1:parm.n_scale % for each scale
             % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
             w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt);
             Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
-            pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
-            %pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1;
-            %pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
+            %pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
+            %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
+            pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1;
+            pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
+
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -581,18 +582,18 @@ switch parm.aggr.method
     case 'cst'
         w=parm.aggr.w;
     case 'rad'
-        i_w = mod(i_realisation,numel(parm.aggr.x));
+        i_w = mod(i_realisation,numel(parm.aggr.A));
         if i_w==0; 
-            i_w=numel(parm.aggr.x); 
+            i_w=numel(parm.aggr.A); 
         end
-        lim = parm.aggr.x(i_w);
+        a = parm.aggr.A(i_w);
+        b = parm.aggr.B(i_w);
         x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
-        if (x<lim)
-            w = Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
-            w = w-min(Sec.rad(:)) / (max(Sec.rad(:)) - min(Sec.rad(:)));
-        else
-            w=1;
-        end
+        
+        rad = Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
+        w = 1-rad*(a-b*x);
+        w = max(0,w);
+        w = min(1,w);
     otherwise
         error('no Aggr method defined')  
 end
