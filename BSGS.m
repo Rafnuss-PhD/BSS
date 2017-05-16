@@ -449,8 +449,9 @@ for i_scale=1:parm.n_scale % for each scale
             w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt);
             Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
             pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
-            %pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1;
-            %pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
+            %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
+            %pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1; pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
+
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
             
@@ -526,7 +527,7 @@ for i_scale=1:parm.n_scale % for each scale
                 plot( kern.axis_prim,pt.aggr.pdf)
                 plot(  kern.axis_prim, max(pt.aggr.pdf)*pt.aggr.cdf)
                 plot([pt.sampled pt.sampled],[0 max(pt.aggr.pdf)],'k')
-                legend(['Kriging, w=' num2str(parm.aggr.fx(parm,i_scale,i_pt))], ['Secondary, w=' num2str(parm.aggr.fx(parm,i_scale,i_pt))],'Aggregated','Aggreag. cdf','sampled location')
+                legend(['Kriging, w=' num2str(w)], ['Secondary, w=' num2str(1-w)],'Aggregated','Aggreag. cdf','sampled location')
                 
                 
                 subplot(3,2,6); hold on;
@@ -581,18 +582,18 @@ switch parm.aggr.method
     case 'cst'
         w=parm.aggr.w;
     case 'rad'
-        i_w = mod(i_realisation,numel(parm.aggr.x));
+        i_w = mod(i_realisation,numel(parm.aggr.A));
         if i_w==0; 
-            i_w=numel(parm.aggr.x); 
+            i_w=numel(parm.aggr.A); 
         end
-        lim = parm.aggr.x(i_w);
+        a = parm.aggr.A(i_w);
+        b = parm.aggr.B(i_w);
         x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
-        if (x<lim)
-            w = Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
-            w = w-min(Sec.rad(:)) / (max(Sec.rad(:)) - min(Sec.rad(:)));
-        else
-            w=1;
-        end
+        
+        rad = Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
+        w = 1-rad*(a-b*x);
+        w = max(0,w);
+        w = min(1,w);
     otherwise
         error('no Aggr method defined')  
 end
