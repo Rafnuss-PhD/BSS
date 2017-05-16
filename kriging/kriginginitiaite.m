@@ -28,10 +28,10 @@ function covar = kriginginitiaite(covar)
 %         'range',num2cell(parm.k.modele(:,2:3)',1)'...
 %         ,'azimuth',num2cell(parm.k.model(:,4)));
 % elseif isfield(parm.k, 'covar')
-    assert(isfield(covar, 'model'),'parm.covar is not properly define')
-    assert(isfield(covar, 'c0'),'parm.covar is not properly define')
-    assert(isfield(covar, 'range0'),'parm.covar is not properly define')
-    assert(isfield(covar, 'azimuth'),'parm.covar is not properly define')
+assert(isfield(covar, 'model'),'parm.covar is not properly define')
+assert(isfield(covar, 'c0'),'parm.covar is not properly define')
+assert(isfield(covar, 'range0'),'parm.covar is not properly define')
+assert(isfield(covar, 'azimuth'),'parm.covar is not properly define')
 % else
 %     error('You need to define parm.k')
 % end

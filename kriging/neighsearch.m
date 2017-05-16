@@ -2,8 +2,8 @@ function [pt_krig] = neighsearch(pt,Res,Prim,krig,parm,i_realisation)
 
 if strcmp(krig.method,'smart')
     warning('Smart Search not good yet!')
-   if pt.i<Res.sim.n/2
-        krig.method='minkmex';
+   if pt.i<Res.sim.n/3
+        krig.method='sort';
    else
        krig.method='sbss';
    end

@@ -21,7 +21,6 @@ function Nscore = nscore(kern, parm, plotit) % X,support_dist,method,extrapolati
 
 
 if parm.nscore
-   
     prior = kern.prior./sum(kern.prior);
     prior(prior<eps)=2*eps;
     cdf = cumsum(prior) ./sum(prior);
@@ -37,9 +36,10 @@ if parm.nscore
     Nscore.dist = @(mu,sigma) [ normcdf(kernel_y_ns_mid,mu,sigma) ; 1] - [0 ; normcdf(kernel_y_ns_mid(),mu,sigma)]; 
 
 else
+    Nscore.support_dist = linspace(-5,5,500)';
     Nscore.forward = @(x) x';
     Nscore.inverse = @(x) x';
-    Nscore.dist    = @(mu,sigma) normpdf(kern.axis_sec,mu,sigma)/sum(normpdf(kern.axis_sec,mu,sigma));
+    Nscore.dist    = @(mu,sigma) normpdf(Nscore.support_dist,mu,sigma)/sum(normpdf(Nscore.support_dist,mu,sigma));
 end
 
 

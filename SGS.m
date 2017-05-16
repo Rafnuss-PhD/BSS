@@ -87,9 +87,12 @@ if ~isfield(parm, 'notify'),
 else
     if ~isfield(parm, 'notify_email'), parm.notify_email  = 'rafnuss@gmail.com'; end
 end
+
+% Path
 if ~isfield(parm, 'path'),          parm.path            = 'linear'; end
 if ~isfield(parm, 'path_random'),   parm.path_random     = true; end
 if ~isfield(parm, 'varcovar'),      parm.path            = 0; end
+
 % Scale and weight parameters
 if ~isfield(parm, 'scale')
     parm.scale = repmat(1:max([grid_gen.sx,grid_gen.sy]),2,1);
@@ -106,13 +109,11 @@ if ~isfield(parm, 'cstk_s') % cstk_s is the scale at which cst is switch on
 end
 if ~isfield(parm, 'fitvar'), parm.fitvar     =0; end % fit the variogram to the data or used the given one in parm.covar
 
-% Nscore
-parm.support_dist = linspace(-5,5,500)';
 
 % Kriging parameter
 parm.k.covar = kriginginitiaite(parm.k.covar);
 if ~isfield(parm, 'nscore'),        parm.nscore        =1; end % use normal score (strongly advice to use it.)
-if ~isfield(parm, 'k') || ~isfield(parm.k, 'method'),  parm.k.method = 'smart'; end
+if ~isfield(parm, 'k') || ~isfield(parm.k, 'method'),  parm.k.method = 'sbss'; end
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'quad'),  parm.k.quad = 0; end
 if ~isfield(parm, 'k') || ~isfield(parm.k, 'nb'),  parm.k.nb = [0 0 0 0 0; 5 5 5 5 5]; end
 
@@ -188,13 +189,7 @@ end
 % transform of the prior normal distribution function is also created
 % (return the pdf in the initial space from the mean and variance in the
 % normal space)
-if parm.nscore && Prim.n~=0
-    Nscore = nscore(Prim.d, parm.support_dist, 'linear', 'linear', parm.plot.ns);
-else
-    Nscore.forward = @(x) x;
-    Nscore.inverse = @(x) x;
-    Nscore.dist    = @(mu,sigma) normpdf(parm.support_dist,mu,sigma)/sum(normpdf(parm.support_dist,mu,sigma));
-end
+Nscore = nscore({}, parm, parm.plot.ns);
 
 % Create the normal space primary variable of known data
 Prim.d_ns = Nscore.forward(Prim.d);
@@ -370,9 +365,8 @@ for i_scale=1:parm.n_scale % for each scale
     % Create the windows for kringing with the function to compute the
     % normalized distence and the order of visit of the cells. Spiral
     % Search setting: previously data (on grid{i_scale} location)
-    if strcmp(parm.k.method,'sbss')
+    if strcmp(parm.k.method,'sbss') && Prim.n>0
         k.ss.el.dw = ceil(min(max(k.covar(1).range*k.wradius./[grid{i_scale}.dx grid{i_scale}.dy]), max(grid{i_scale}.nx,grid{i_scale}.ny)));
-        
         [k.ss.el.X, k.ss.el.Y] = meshgrid(-k.ss.el.dw:k.ss.el.dw);% grid{i_scale} of searching windows
         [k.ss.el.X_T, k.ss.el.Y_T]=rotredtrans(k.ss.el.X*grid{i_scale}.dx, k.ss.el.Y*grid{i_scale}.dy, k.covar(1).azimuth, k.covar(1).range); % transforms the grid{i_scale}
         k.ss.el.dist = sqrt(k.ss.el.X_T.^2 + k.ss.el.Y_T.^2); % find distence
@@ -471,7 +465,7 @@ for i_scale=1:parm.n_scale % for each scale
                 assert(all(diff(pt.krig.cdf)>0))
             end
             
-            pt.sampled = interp1(pt.krig.cdf, parm.support_dist, Res{end}.U(i_pt,i_realisation),'pchip');
+            pt.sampled = interp1(pt.krig.cdf, Nscore.support_dist, Res{end}.U(i_pt,i_realisation),'pchip');
             
             
             %% * 3.4 *PLOTIT*
