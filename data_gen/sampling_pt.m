@@ -36,8 +36,8 @@ switch method
     case 2 % select k random point on the mesh
         k = min([500 round(0.01*numel(field(:)))]); % number of input data
         rng(123456)
-        [pt.d,idx] = datasample(field(:),k,'Replace',false);
-        [pt_j,pt_i] = ind2sub(size(field),idx);
+        [pt.d,pt.id] = datasample(field(:),k,'Replace',false);
+        [pt_j,pt_i] = ind2sub(size(field),pt.id);
         pt.x=grid.x(pt_i);
         pt.y=grid.y(pt_j);
 

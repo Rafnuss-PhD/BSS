@@ -165,7 +165,7 @@ end
 
 % Sampling
 sigma = sampling_pt(grid_gen,sigma_true,gen.samp,gen.samp_n);
- K    = sampling_pt(grid_gen,K_true,gen.samp,gen.samp_n);
+K    = sampling_pt(grid_gen,K_true,gen.samp,gen.samp_n);
  
 % Plot
 % if gen.plotit

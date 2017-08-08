@@ -75,7 +75,7 @@ switch gen.Rho.method
         end
         
     case 'RESINV3D' %% NOT WORKING
-        addpath data_creation/FW2_5D data_creation/RESINVM3D
+
         
         % conductivity
         s=rho_true';
@@ -196,6 +196,58 @@ switch gen.Rho.method
         end
         
         rmpath data_gen/R2
+        
+    case 'RES2DINV'
+        grid_Rho = gen.Rho.grid;
+        elec = gen.Rho.elec;
+        dmin = gen.Rho.dmin;
+        
+        dmin.readonly = 0;
+        
+        addpath data_gen/R2
+        
+        %where to write stuff
+        dmin.filepath       = 'data_gen/data/IO-file/';
+        dmin.res_matrix     = gen.Rho.dmin.res_matrix; % resolution matrix: 1-'sensitivity' matrix, 2-true resolution matrix or 0-none
+        delete([dmin.filepath '*']);
+        
+        % grid_Rho.nx           = 300;
+        % grid_Rho.ny           = 30;
+        grid_Rho.nxy          = grid_Rho.ny*grid_Rho.nx;
+        grid_Rho.x            = linspace(grid.x(1),grid.x(end),grid_Rho.nx); % cell center
+        grid_Rho.y            = logspace(log10(grid.y(1)+5),log10(grid.y(end)+5),grid_Rho.ny)-5; % cell center
+        grid_Rho.x_n          = [grid_Rho.x(1)-(grid_Rho.x(2)-grid_Rho.x(1))/2  grid_Rho.x(1:end-1)+diff(grid_Rho.x)/2  grid_Rho.x(end)+(grid_Rho.x(end)-grid_Rho.x(end-1))/2]; % this are nodes and not element (center)
+        grid_Rho.y_n          = [grid_Rho.y(1)-(grid_Rho.y(2)-grid_Rho.y(1))/2  grid_Rho.y(1:end-1)+diff(grid_Rho.y)/2  grid_Rho.y(end)+(grid_Rho.y(end)-grid_Rho.y(end-1))/2]; % this are nodes and not element (center)
+        assert((grid_Rho.ny+16)*(grid_Rho.nx+32)<=30000,'the number of cell cannot be greater than 30''0000')
+        gen.Rho.grid          = grid_Rho;
+        
+        % Electrod config
+        % elec.spacing      = 2; % in grid_Rho.dx unit
+        elec.x              = grid_Rho.x_n(1:elec.spacing:end);
+        elec.n              = numel(grid_Rho.x_n(1:elec.spacing:end)); % max is 300
+        % elec.config_max   = 3000; % max is 6000
+        elec.method         = 'dipole-dipole';
+        elec.depth_max      = ceil(elec.n*grid_Rho.y(end)/grid_Rho.x(end));
+        elec.selection      = 5; %1: k-mean, 2:iterative removal of the closest neighboohood 3:iterative removal of the averaged closest point 4:voronoi 5:random
+        elec                = config_elec(elec); % create the data configuration.
+        gen.Rho.elec        = elec; % put the elec struct in the dmin
+        
+        
+        % Forward
+        dmin.header         = 'Forward';  % title of up to 80 characters
+        dmin.job_type       = 0;
+        % Interpolation
+        f                   = griddedInterpolant({grid.y,grid.x},rho_true,'nearest','nearest');
+        dmin.rho_true       = f({grid_Rho.y,grid_Rho.x});
+        dmin.filename       = 'gtrue.dat';
+        dmin.num_regions    = 1+numel(dmin.rho_true);
+        dmin.rho_min        = min(rho_true(:));
+        dmin.rho_avg        = mean(rho_true(:));
+        dmin.rho_max        = max(rho_true(:));
+        gen.Rho.f           = Matlat2R2(grid_Rho,dmin,elec); % write file and run forward modeling
+        
+        keyboard
+        
 end
 
 Sigma.x_raw = grid_Rho.x;

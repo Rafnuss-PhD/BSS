@@ -447,16 +447,11 @@ for i_scale=1:parm.n_scale % for each scale
             % pt.aggr.pdf = kern.prior.^(1-parm.w_krig(i_scale)-parm.w_sec(i_scale)) .* pt.sec.pdf.^parm.w_sec(i_scale) .* pt.krig.pdf.^parm.w_krig(i_scale);
             w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt);
             Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
-<<<<<<< HEAD
-            %pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
+
+            % pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
             %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
-            pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1;
-            pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
-=======
-            pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
-            %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
-            %pt.aggr.pdf = kern.prior.^(-1).* pt.sec.pdf.^1 .* pt.krig.pdf.^1; pt.aggr.pdf(isnan(pt.aggr.pdf))=0;
->>>>>>> origin/Standard
+            pt.aggr.pdf = kern.prior.^(1-parm.aggr.sum).* pt.sec.pdf.^(parm.aggr.sum-w) .* pt.krig.pdf.^w; pt.aggr.pdf(isnan(pt.aggr.pdf) | pt.aggr.pdf==Inf)=0;
+
 
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
             
@@ -585,8 +580,24 @@ switch parm.aggr.method
         x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
         assert(x<=1,'error')
         w = (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
+    case 'A'
+        i_w = mod(i_realisation,numel(parm.aggr.A));
+        if i_w==0; 
+            i_w=numel(parm.aggr.A); 
+        end
+        a = parm.aggr.A(i_w);
+        x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
+        if (x<a)
+            w=.5;
+        else 
+            w=1;
+        end
     case 'cst'
-        w=parm.aggr.w;
+        i_w = mod(i_realisation,numel(parm.aggr.w));
+        if i_w==0; 
+            i_w=numel(parm.aggr.w); 
+        end
+        w=parm.aggr.w(i_w);
     case 'rad'
         i_w = mod(i_realisation,numel(parm.aggr.A));
         if i_w==0; 
