@@ -3,6 +3,9 @@
 #################
 result*/
 data_gen/data/
+dummy
+subamd.sh
+*Server*
 
 #################
 ## Eclipse
