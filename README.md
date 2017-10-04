@@ -1,29 +1,18 @@
-# Bayasian Sequential Gaussian Simulator (BSGS) #
-Bayesian Sequential Gaussian Simulation purpose is to use a secondary variable $Z$ to guide a sequential simulation of a primary variable $X$. 
+# Bayasian Sequential Simulator (BSS) #
+BSS simulates a primary variable based on a collocated secondary variable.
 
 ## History and Developpement ##
-* The Bayasian Sequential Gaussian Simulation technique was introduced by  Doyen & Boer in 1996 to extrapolate non linear data of lithology. 
-* Ruggeri developped a two-step approch of the inital BSGS to combine electrical and hydrological conductivity.
+The method was initially applied to the simulation of lithoclasses based on seismic impedance measurements (Doyen and Boer 1996). Later, Ruggeri et al. (2013, 2014) adapted the method to the regional-scale simulation of hydraulic conductivity guided by information provided electrical conductivity. 
 
-![CharFlow_BSGS_resized.png](https://bitbucket.org/repo/gABK6j/images/26574965-CharFlow_BSGS_resized.png) ![BSGS_Simulation_2.png](https://bitbucket.org/repo/gABK6j/images/3694505833-BSGS_Simulation_2.png)
 
 ## Theorie of BSGS ##
-The overall objectif of BSGS is to generate a realisations of a primary variable using two dataset : (1) a sparce high resolution primary and secondary variable at identical location and  (2) low-resolution secondary variable covering the entire region.
-
-The method estimate all unsampled location as follow :
-1. Randomly choose a point
-2. Using kriging technique find the mean and standard deviation determining the prior estimatet
-3. Find the Baysian Likelihood at the location from collocated data
-4. Estimate the posteriori distribution using Baysian theorem
-5. Sample form this distribution to determine the value.
-![BSGS_Simulation.png](https://bitbucket.org/repo/gABK6j/images/3538075189-BSGS_Simulation.png)
-
+See https://www.researchgate.net/project/Bayesian-Sequential-Simulation-BSS for published paper and presentations.
 
 ## How to use it ? ##
 
-Several feathure can be turn on/off such as :  variogramm fitting to conditional data, smart neighbooring search for krigeage, constant path and weight for kriging, n-score transform. This feathure are made to make the code running faster.
 
 
-## About the Developper team ##
-
-*Current developer : RaphaÃ«l Nussbaumer rafnuss@gmail.com*
+## Reference ##
+ * Ruggeri, Paolo, Erwan Gloaguen, René Lefebvre, James Irving, and Klaus Holliger. 2014. “Integration of Hydrological and Geophysical Data beyond the Local Scale: Application of Bayesian Sequential Simulation to Field Data from the Saint-Lambert-de-Lauzon Site, Québec, Canada.” Journal of Hydrology 514:271–80. Retrieved December 1, 2014 (http://linkinghub.elsevier.com/retrieve/pii/S0022169414003059).
+ * Ruggeri, Paolo, James Irving, Erwan Gloaguen, and Klaus Holliger. 2013. “Regional-Scale Integration of Multiresolution Hydrological and Geophysical Data Using a Two-Step Bayesian Sequential Simulation Approach.” Geophysical Journal International 194(1):289–303. Retrieved November 26, 2014 (http://gji.oxfordjournals.org/cgi/doi/10.1093/gji/ggt067).
+ * Doyen, Philippe M. and Lennert D. Den Boer. 1996. “Bayesian Sequential Gaussian Simulation of Lithology with Non-Linear Data.” 11.
