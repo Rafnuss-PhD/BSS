@@ -168,35 +168,35 @@ sigma = sampling_pt(grid_gen,sigma_true,gen.samp,gen.samp_n);
 K    = sampling_pt(grid_gen,K_true,gen.samp,gen.samp_n);
  
 % Plot
-% if gen.plotit
-%     figure(1);clf; subplot(2,1,1); hold on;axis equal; title('Electrical Conductivity [mS/m]');xlabel('x [m]'); ylabel('y [m]')
-%     imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar;  scatter(sigma.x,sigma.y,sigma.d); legend({'Sampled location'})
-%     subplot(2,1,2); hold on; title('Histogram'); xlabel('Electrical Conductivity [mS/m]');
-%     ksdensity(sigma_true(:)); ksdensity(sigma.d(:)); legend({'True','Sampled'})
-%     
-%     [gamma_x, gamma_y] = variogram_gridded_perso(sigma_true);
-%     figure(2); clf; subplot(2,1,1); hold on; title('Horizontal (x) Variogram')
-%     plot(grid_gen.x(1:end/2),gamma_x(1:end/2)./std(sigma_true(:))^2);
-%     % plot([gen.covar.modele(1,2) gen.covar.modele(1,2)],[0 1])
-%     plot(grid_gen.x(1:end/2),1-gen.covar.g(grid_gen.x(1:end/2)/gen.covar.range(1)),'linewidth',2)
-%     subplot(2,1,2); hold on; title('Vertical (y) Variogram')
-%     plot(grid_gen.y(1:end/2),gamma_y(1:end/2)./std(sigma_true(:))^2);
-%     % plot([gen.covar.modele(1,3) gen.covar.modele(1,3)],[0 1])
-%     plot(grid_gen.y(1:end/2),1-gen.covar.g(grid_gen.y(1:end/2)/gen.covar.range(2)),'linewidth',2)
-%     
-%     figure(3);
-%     ksdensity([log(K_true(:)),sigma_true(:)])
-%     
-%     keyboard;close all; % try different initial data if wanted
-% end
+if gen.plotit
+    figure(1);clf; subplot(2,1,1); hold on;axis equal; title('Electrical Conductivity [mS/m]');xlabel('x [m]'); ylabel('y [m]')
+    imagesc(grid_gen.x,grid_gen.y,sigma_true);colorbar;  scatter(sigma.x,sigma.y,sigma.d); legend({'Sampled location'})
+    subplot(2,1,2); hold on; title('Histogram'); xlabel('Electrical Conductivity [mS/m]');
+    ksdensity(sigma_true(:)); ksdensity(sigma.d(:)); legend({'True','Sampled'})
+    
+    [gamma_x, gamma_y] = variogram_gridded_perso(sigma_true);
+    figure(2); clf; subplot(2,1,1); hold on; title('Horizontal (x) Variogram')
+    plot(grid_gen.x(1:end/2),gamma_x(1:end/2)./std(sigma_true(:))^2);
+    % plot([gen.covar.modele(1,2) gen.covar.modele(1,2)],[0 1])
+    plot(grid_gen.x(1:end/2),1-gen.covar.g(grid_gen.x(1:end/2)/gen.covar.range(1)),'linewidth',2)
+    subplot(2,1,2); hold on; title('Vertical (y) Variogram')
+    plot(grid_gen.y(1:end/2),gamma_y(1:end/2)./std(sigma_true(:))^2);
+    % plot([gen.covar.modele(1,3) gen.covar.modele(1,3)],[0 1])
+    plot(grid_gen.y(1:end/2),1-gen.covar.g(grid_gen.y(1:end/2)/gen.covar.range(2)),'linewidth',2)
+    
+    figure(3);
+    ksdensity([log(K_true(:)),sigma_true(:)])
+    
+    keyboard;close all; % try different initial data if wanted
+end
 
 [Sigma, gen] = Rho_generation(grid_gen,rho_true,gen); % 5. Simulate low-resolution grid_gen measurement of G
-Sigma        = Sens2std(Sigma,grid_gen,sigma);
+%Sigma        = Sens2std(Sigma,grid_gen,sigma);
 % Sigma.d         = sigma_true;
 % Sigma.x         = grid_gen.x;
 % Sigma.y         = grid_gen.y;
 % Sigma.std       = 1+zeros(size(Sigma.d));
-[Sigma.X,Sigma.Y]=meshgrid(Sigma.x, Sigma.y);
+[Sigma.X,Sigma.Y] = meshgrid(Sigma.x, Sigma.y);
 
 %% * 4.*SAVING*
 

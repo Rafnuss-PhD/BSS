@@ -52,7 +52,7 @@ if d.job_type==1
             fprintf(fileID,'%d  %d    << npystart, npy\n',d.npystart,d.npy);
         end
     end
-    fprintf(fileID,'%d    << inverse_type\n',d.inverse_type);
+    fprintf(fileID,'%d  %d   << inverse_type, target_decrease \n',d.inverse_type, d.target_decrease);
     if d.inverse_type==3
         fprintf(fileID,'%d    << qual_ratio\n',d.inverse_type);
         fprintf(fileID,'%d  %d    << rho_min, rho_max\n',d.rho_min,d.rho_max);

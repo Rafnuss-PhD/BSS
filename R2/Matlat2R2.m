@@ -61,7 +61,7 @@ if d.num_regions == 0  % file, not working... instead set-up one value per grid 
     d.rho_true            = dmin.rho_avg*ones(d.numnp_y-1,d.numnp_x-1);
     d.rho_true(1:(d.numnp_y-1-n_plus),(n_plus+1):(d.numnp_x-1-n_plus))    = dmin.rho_true;
     writeMatrix2Resdat(d)                            % write the rho_true
-elseif d.num_regions >100                            % one value per grid cells in the inside grid plus a cst value for the buffer zone
+elseif d.num_regions >10                            % one value per grid cells in the inside grid plus a cst value for the buffer zone
     d.rho_true            = nan(d.numnp_y-1,d.numnp_x-1);
     d.rho_true(1:(d.numnp_y-1-n_plus),(n_plus+1):(d.numnp_x-1-n_plus))    = dmin.rho_true;
     idx=1:((d.numnp_y-1)*(d.numnp_x-1));
@@ -77,6 +77,7 @@ end
 %% INVERSE SOLUTION
 if d.job_type==1 % inverse solution
     d.inverse_type      =  1;           % Inverse type: 0-pseudo-Marquardt, 1-regularised solution with linear filter (usual mode),
+    d.target_decrease = 0;
     % 2-regularised type with quadratic filter, 3-qualitative solution or 4-blocked linear regularised type
     if d.mesh_type==4 || d.mesh_type==5 % quadrilateral mesh
         d.patch_size_x = 1;        % parameter block sizes in the x and y direction, respectively.
@@ -102,8 +103,8 @@ if d.job_type==1 % inverse solution
             d.alpha_s           = NaN;   % regularisation to the starting model
         end
         
-        d.a_wgt                 = 0.000001;%.01;   % error variance with var(R) = (a_wgt*a_wgt) + (b_wgt*b_wgt) * (R*R)
-        d.b_wgt                 = 0.000001;%.02;   % where R is the resistance measured
+        d.a_wgt                 = 0.000001;   % error variance with var(R) = (a_wgt*a_wgt) + (b_wgt*b_wgt) * (R*R)
+        d.b_wgt                 = 0.000001;   % where R is the resistance measured
         if d.patch_size_x==0 && d.patch_size_y==0
             d.param_symbol
         end
@@ -119,7 +120,7 @@ end
 %% REGION OUTPUT (new in 2.7)
 d.num_xy_poly                   = 5;   % number of x,y co-ordinates that define a polyline bounding (4 corners + repeat the first corner)
 d.x_poly                        = [x(1) x(end) x(end) x(1)   x(1)];   % co-ordinates of points on the polyline
-d.y_poly                        = [y(1) y(1)   y(end) y(end) y(1)];
+d.y_poly                        = -[y(1) y(1)   y(end) y(end) y(1)];
 
 %% ELECTRODE
 spacing                         = elec.spacing; % in termes of grid size
@@ -152,16 +153,16 @@ createR2in(d)
 
 %% RUN .EXE
 if ~dmin.readonly
-    copyfile('R2/R2_x64.exe',d.filepath);
+    copyfile('R2/R2.exe',d.filepath);
     pwd_temp = pwd;
     cd(d.filepath); tic;
     if ismac
         warning('You will need wine for mac in order to work !')
-        status = unix('wine R2_x64.exe');
+        status = unix('wine R2.exe');
     elseif isunix
-        status = unix('wine R2_x64.exe');
+        status = unix('wine R2.exe');
     elseif ispc
-        status = system('R2_x64.exe');
+        status = system('R2.exe');
     else
         error('Cannot recognize platform')
     end

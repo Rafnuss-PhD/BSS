@@ -24,18 +24,17 @@ switch method
     case 1 % select all point in k boreholes equaly spaced
         
         %  positions of conditioning data
-        
-        bor_pos_x = round(linspace(1,grid.nx,k));
-        bor_pos_y = 1:grid.ny;
-        [x_x, x_y] = meshgrid(grid.x(bor_pos_x),grid.y(bor_pos_y));
+        [y_id, x_id] = ndgrid(1:numel(grid.y), round(linspace(1,numel(grid.x),k)));
+        pt.x = grid.x(x_id(:))';
+        pt.y = grid.y(y_id(:))';
         
         % Create the input data
-        x = field(bor_pos_y,bor_pos_x);
-        pt.d=x(:); pt.x=x_x(:); pt.y=x_y(:); 
+        pt.id = sub2ind(size(field),y_id(:),x_id(:));
+        pt.d = field(pt.id);
+        
 
     case 2 % select k random point on the mesh
-        k = min([500 round(0.01*numel(field(:)))]); % number of input data
-        rng(123456)
+        % rng(123456)
         [pt.d,pt.id] = datasample(field(:),k,'Replace',false);
         [pt_j,pt_i] = ind2sub(size(field),pt.id);
         pt.x=grid.x(pt_i);
