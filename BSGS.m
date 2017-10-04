@@ -343,6 +343,7 @@ for i_scale=1:parm.n_scale % for each scale
         [k.ss.el.dist_s, k.ss.el.dist_idx] = sort(k.ss.el.dist(:)); % sort according distence.
         k.ss.el.X_s=k.ss.el.X(k.ss.el.dist_idx); % sort the axis
         k.ss.el.Y_s=k.ss.el.Y(k.ss.el.dist_idx);
+        k.ss.el.n = numel(k.ss.el.dist_idx);
     end
     
     %% * 1.3. *Generate the order for visting cells*
@@ -569,48 +570,35 @@ end
 
 function w = aggr_fx(Res,Sec,parm,grid,i_realisation,i_scale,pt)
 
+
+i_t = mod(i_realisation,size(parm.aggr.T,1));
+if i_t==0;
+    i_t=size(parm.aggr.T,1);
+end
+x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
+assert(x<=1,'error')
+
 switch parm.aggr.method
-    case 'AB'
-        i_w = mod(i_realisation,numel(parm.aggr.A));
-        if i_w==0; 
-            i_w=numel(parm.aggr.A); 
-        end
-        a = parm.aggr.A(i_w);
-        b = parm.aggr.B(i_w);
-        x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
-        assert(x<=1,'error')
-        w = (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
-    case 'A'
-        i_w = mod(i_realisation,numel(parm.aggr.A));
-        if i_w==0; 
-            i_w=numel(parm.aggr.A); 
-        end
-        a = parm.aggr.A(i_w);
-        x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
-        if (x<a)
-            w=.5;
+    case 'cst'
+        w=parm.aggr.T(i_t);
+    case 'step'
+        if (x<parm.aggr.T(i_t))
+            w=0;
         else 
             w=1;
         end
-    case 'cst'
-        i_w = mod(i_realisation,numel(parm.aggr.w));
-        if i_w==0; 
-            i_w=numel(parm.aggr.w); 
+    case 'linear'
+        if (x<parm.aggr.T(i_t,1))
+            w  =0;
+        elseif (x>parm.aggr.T(i_t,2))
+            w = 1;
+        else 
+            w = ( parm.aggr.T(i_t,2)-x ) / (parm.aggr.T(i_t,2)-parm.aggr.T(i_t,1));
         end
-        w=parm.aggr.w(i_w);
-    case 'rad'
-        i_w = mod(i_realisation,numel(parm.aggr.A));
-        if i_w==0; 
-            i_w=numel(parm.aggr.A); 
-        end
-        a = parm.aggr.A(i_w);
-        b = parm.aggr.B(i_w);
-        x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
-        
-        rad = Sec.rad(Sec.y==Res{i_scale}.Y(pt.y,pt.x), Sec.x==Res{i_scale}.X(pt.y,pt.x));
-        w = 1-rad*(a-b*x);
-        w = max(0,w);
-        w = min(1,w);
+    case 'sigmoid'
+        a = parm.aggr.T(i_t,1);
+        b = parm.aggr.T(i_t,2);
+        w = (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
     otherwise
         error('no Aggr method defined')  
 end
