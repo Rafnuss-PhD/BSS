@@ -165,20 +165,20 @@ Klog.d=log(Klog.d);
 
 %% work on the weight
 % parm.aggr.method='AB';
-% parm.aggr.a=0:.1:1;%.01:.01:.19;
-% parm.aggr.b=5;
+parm.aggr.a=.06;%.01:.01:.19;
+parm.aggr.b=[Inf 1000 100 50 20 10];
 % [parm.aggr.A, parm.aggr.B] = meshgrid(parm.aggr.a, parm.aggr.b);
 % parm.n_realisation  = parm.par_n*numel(parm.aggr.A)*4;
-% figure(929);hold on;
-% i_pt_temp=1:grid_gen.nxy;
-% fx = @(a,b,x) (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
-% for i_a=1:numel(parm.aggr.a)
-%     a=parm.aggr.a(i_a);
-%     for i_b=1:numel(parm.aggr.b)
-%         b=parm.aggr.b(i_b);
-%         plot(i_pt_temp,fx(a,b,i_pt_temp./grid_gen.nxy));
-%     end
-% end
+figure(929);hold on;
+i_pt_temp=1:grid_gen.nxy;
+fx = @(a,b,x) (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
+for i_a=1:numel(parm.aggr.a)
+    a=parm.aggr.a(i_a);
+    for i_b=1:numel(parm.aggr.b)
+        b=parm.aggr.b(i_b);
+        plot(i_pt_temp,fx(a,b,i_pt_temp./grid_gen.nxy));
+    end
+end
 
 % filename = 'ResCst11111';
 % parm.par_n = 1;
@@ -266,8 +266,9 @@ disp('file written')
 % Sigma_d=Sigma.d(:);
 % parm.n_realisation  = parm.par_n*1;
 % parm.notify = 0;
-% parm.aggr.fx = @(a,b,x) (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
+%parm.aggr.fx = @(a,b,x) (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
 % fun = @(x) OF_fx(Klog,Sigma,grid_gen,parm,id,Gamma_t,XY,jpdf,Sigma_d, x(1), x(2) );
+
 
 % filename = 'ResRAD';
 % parm.aggr.method='rad';

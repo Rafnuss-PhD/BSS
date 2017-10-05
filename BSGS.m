@@ -450,8 +450,10 @@ for i_scale=1:parm.n_scale % for each scale
             Res{end}.w{i_realisation}=[Res{end}.w{i_realisation};w];
 
             % pt.aggr.pdf = pt.sec.pdf.^(1-w) .* pt.krig.pdf.^w;
-            %pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
-            pt.aggr.pdf = kern.prior.^(1-parm.aggr.sum).* pt.sec.pdf.^(parm.aggr.sum-w) .* pt.krig.pdf.^w; pt.aggr.pdf(isnan(pt.aggr.pdf) | pt.aggr.pdf==Inf)=0;
+            % pt.aggr.pdf = pt.sec.pdf.^1 .* pt.krig.pdf.^1;
+            % pt.aggr.pdf = kern.prior.^(1-parm.aggr.sum).* pt.sec.pdf.^(parm.aggr.sum-w) .* pt.krig.pdf.^w; 
+            pt.aggr.pdf = kern.prior.^(w-1).* pt.sec.pdf.^(1-w) .* pt.krig.pdf.^1; 
+            pt.aggr.pdf(isnan(pt.aggr.pdf) | pt.aggr.pdf==Inf)=0;
 
 
             pt.aggr.pdf = pt.aggr.pdf./sum(pt.aggr.pdf);
@@ -575,7 +577,7 @@ i_t = mod(i_realisation,size(parm.aggr.T,1));
 if i_t==0;
     i_t=size(parm.aggr.T,1);
 end
-x = (Res{i_scale}.nxy-Res{i_scale}.sim.n+pt.i)./grid{end}.nxy;
+x = pt.i./ (grid{end}.nxy - Res{i_scale}.nxy+Res{i_scale}.sim.n);
 assert(x<=1,'error')
 
 switch parm.aggr.method
