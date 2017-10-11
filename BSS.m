@@ -221,7 +221,7 @@ for i_scale = 1:sn
     % disp(['scale: ' num2str(i_scale) '/' num2str(sn)])
 end
 t.weight = toc(tik.weight);
-disp('Weights Computed')
+disp(['Weights Computed in ' num2str(t.weight*60)] )
 
 if parm.saveit
     filename=['result-SGS/SIM-', parm.name ,'_', datestr(now,'yyyy-mm-dd_HH-MM-SS'), '.mat'];
@@ -235,7 +235,7 @@ tik.real = tic;
 Rest = nan(ny,nx,parm.n_real);
 parm_seed_U = parm.seed_U;
 
-parfor i_real=1:parm.n_real
+for i_real=1:parm.n_real
     Res=nan(ny,nx);
     Res(hd.id) = hd.d;
     rng(parm_seed_U);
@@ -290,6 +290,7 @@ end
 
 t.real = toc(tik.real);
 t.global = toc(tik.global);
+disp(['Run finished in ' num2str(t.global*60)] )
 end
 
 
