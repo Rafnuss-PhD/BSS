@@ -203,6 +203,39 @@ end
 subplot(1,2,2); imagesc(kern.axis_prim, kern.axis_sec ,mean(dens,3))
 
 %% Weight 
+% parm.aggr.method='cst';
+% parm.aggr.T = (0:.1:1)';
+
+parm.aggr.method='step';
+parm.aggr.T = (0:.1:1)';
+
+
+% parm.aggr.method='linear';
+% parm.aggr.T = [ .1 .9];
+    
+% parm.aggr.method='sigmoid';
+% parm.aggr.T = [ .06 Inf ; .06 1000; .06  100; .06  50; .06  20; .06  10];
+
+
+filename='ResStep0-1';
+parm.aggr.sum = 1;
+
+parm.par_n=48;
+% parpool(parm.par_n)
+parm.n_real  = parm.par_n*numel(parm.aggr.T);
+
+
+disp('Setup ok, Start')
+n=6;
+Res=nan(ny,nx,parm.n_real*n);
+for i=4:n
+    ii = (i-1)*parm.n_real + (1:parm.n_real);
+    Res(:,:, ii ) =  BSS(nx,ny,hd,f0,sec,parm);
+    disp(['Sim:' num2str(i/n)])
+end
+disp('Run finished')
+
+
 
 id = grid_gen.x<parm.k.covar(1).range0(1).*parm.k.wradius;
 Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
@@ -211,43 +244,61 @@ XY = kern.XY;
 Sigma_d = Sigma.d(:);
 dens = kern.dens(:);
 
-E1 = nan(sum(id),parm.n_real);
-E2 = nan(numel(kern.dens),parm.n_real);
+E1 = nan(sum(id),parm.n_real*n);
+E2 = nan(numel(kern.dens),parm.n_real*n);
 
-for i_real=1:parm.n_real
-   r = Res_ns(:,:,i_real);
-   gamma_x = variogram_gridded_perso(r);
-   E1(:,i_real) = gamma_x(id)-Gamma_t_id;
+
+parfor i_real=1:parm.n_real*n
+   r = Res(:,:,i_real);
+   % gamma_x = variogram_gridded_perso(r);
+   % E1(:,i_real) = gamma_x(id)-Gamma_t_id;
    E2(:,i_real) = ksdensity([Sigma_d r(:)],XY)-dens;
 end
+disp('Error Computed')
 
 
-try 
-    if strcmp(parm.aggr.method,'AB')
-        parfor i_ab = 1:numel(parm.aggr.A)
-            idAB=i_ab:numel(parm.aggr.A):parm.n_real;
-            OF1(i_ab) = sqrt(mean(mean(E1(:,idAB),2).^2));
-            OF2(i_ab) = sqrt(mean(mean(E2(:,idAB),2).^2));
-        end
-    elseif strcmp(parm.aggr.method,'rad')
-        parfor i_x = 1:numel(parm.aggr.x)
-            idx=i_x:numel(parm.aggr.x):parm.n_real;
-            OF1(i_x) = sqrt(mean(mean(E1(:,idx),2).^2));
-            OF2(i_x) = sqrt(mean(mean(E2(:,idx),2).^2));
-        end
-    else
-        OF1 = sqrt(mean(mean(E1,2).^2));
-        OF2 = sqrt(mean(mean(E2,2).^2));
+try
+    %OF1=nan(size(parm.aggr.T,1),1);
+    OF2=nan(size(parm.aggr.T,1),1);
+    parfor i_t = 1:size(parm.aggr.T,1)
+        ii_t=i_t:size(parm.aggr.T,1):parm.n_real;
+     %   OF1(i_t) = sqrt(mean(mean(E1(:,ii_t),2).^2));
+        OF2(i_t) = sqrt(mean(mean(E2(:,ii_t),2).^2));
     end
 catch
-    save(['result-BSS/' filename],'Res','parm','kern','Nscore','E1','E2')
+    %save(['result-BSGS/' filename],'Res','parm','kern','Nscore','E1','E2')
 end
 
-save(['result-BSS/' filename],'Res','parm','kern','Nscore','E1','E2','OF1','OF2')
+save(['result-BSS/' filename],'parm','E1','E2','OF1','OF2')
 disp('file written')
-%save('result-BSS/ResAB_A_1.mat','parm','E1','E2')
-% save('C:\Users\Raphael\Desktop\to be compress\ResRAD_AB.mat','Res','parm','kern','Nscore','E1','E2','OF1','OF2')
 
 
+%% Plot
+
+filenames={'ResCst0-1','ResStep0-1'};
+
+figure(1); clf; hold on;
+for i=1:numel(filenames)
+    load(['result-BSS/' filenames{i} '.mat'], 'OF1', 'OF2','parm')
+    scatter(OF1,OF2,'filled')
+    text(OF1+.001,OF2+.0002,strread(num2str(parm.aggr.T'),'%s'))
+end
+load(['result-BSGS\ResA01.mat'], 'OF1', 'OF2','parm');OF1_2=OF1;OF2_2=OF2; T=parm.aggr.A;
+load(['result-BSGS\ResA01_2.mat'], 'OF1', 'OF2','parm');
+OF1=[OF1(2:end) OF1_2];
+OF2=[OF2(2:end) OF2_2];
+T=[parm.aggr.A(2:end) T];
+scatter(OF1,OF2,'filled')
 
 
+scatter(sqrt(mean((gamma_x_s(id)-Gamma_t_id).^2)),sqrt(mean((ksdensity([Sigma.d(:) log(K_true(:))],parm.kernel.XY)-parm.kernel.dens(:)).^2)),'filled')
+
+xlabel('OF_X'); ylabel('OF_Z');
+
+legend(res_name)%,'Location','northoutside','Orientation','horizontal')
+
+figure(3);clf; hold on;
+for i_t = 1:size(parm.aggr.T,1)
+    ii_t=i_t:size(parm.aggr.T,1):parm.n_real;
+    plot(mean(E1(:,ii_t),2))
+end

@@ -235,7 +235,7 @@ tik.real = tic;
 Rest = nan(ny,nx,parm.n_real);
 parm_seed_U = parm.seed_U;
 
-for i_real=1:parm.n_real
+parfor i_real=1:parm.n_real
     Res=nan(ny,nx);
     Res(hd.id) = hd.d;
     rng(parm_seed_U);
@@ -251,10 +251,16 @@ for i_real=1:parm.n_real
             w = aggr_fx(i_real,i_pt/sum(nb),parm.aggr);
             
             fa = f0.^0 .* fkrig.^(1-w) .* fsec.^w;
-            assert(~any(isnan(fa)))
             
-            cfa = cumsum(fa+eps) ./ sum(fa(1:end-1)+eps);
+            cfa = cumsum([0 ; fa(2:end-1)+eps ; eps]) ./ (sum(fa(2:end-1)+eps));
             Res(path(i_pt)) =  interp1(cfa, sec.axis, U(i_pt),'linear');
+            
+            if isnan(Res(path(i_pt)))
+                cfa
+                sec.axis
+                U(i_pt)
+                error('er')
+            end
            
             if 0==1
                 figure(3); clf; hold on;

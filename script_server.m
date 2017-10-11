@@ -8,6 +8,7 @@ Nscore = nscore(kern, struct('nscore', 1), 0); %Prim.d, kern.axis_prim, 'pchip',
 sec_pdf = kern.dens(:,s_id);
 sec.pdf = bsxfun(@times, sec_pdf, 1./sum(sec_pdf));
 sec.axis = Nscore.forward(kern.axis_prim);
+kern.XY(:,2) =  Nscore.forward(kern.XY(:,2));
 
 parm.k.covar = gen.covar;
 parm.k.covar.range0 = fliplr(gen.covar.range0) ./ [grid_gen.dy grid_gen.dx];
@@ -22,7 +23,7 @@ parm.seed_U = 'shuffle';
 parm.k.wradius = 3;
 parm.k.lookup = false;
 parm.k.nb = 30;
-parm.mg=1;
+parm.mg=0;
 
 
 % use the log of hyd. cond.
@@ -38,11 +39,11 @@ ny = grid_gen.ny;
 
 %% work on the weight
 
-parm.aggr.method='cst';
-parm.aggr.T = 0;
+ parm.aggr.method='cst';
+ parm.aggr.T = (0:.1:1)';
 
 % parm.aggr.method='step';
-% parm.aggr.T = [0 .5 1]';
+% parm.aggr.T = (0:.1:1)';
 
 % parm.aggr.method='cst';
 % parm.aggr.T = .5;
@@ -56,18 +57,18 @@ parm.aggr.T = 0;
 % parm.aggr.T = [ .06 Inf ; .06 1000; .06  100; .06  50; .06  20; .06  10];
 
 
-filename='ResCst0';
+filename='ResCst0-1';
 parm.aggr.sum = 1;
 
 parm.par_n=48;
-parpool(parm.par_n)
+% parpool(parm.par_n)
 parm.n_real  = parm.par_n*numel(parm.aggr.T);
 
 
 disp('Setup ok, Start')
 n=6;
 Res=nan(ny,nx,parm.n_real*n);
-for i=1:n
+for i=1:3
     ii = (i-1)*parm.n_real + (1:parm.n_real);
     Res(:,:, ii ) =  BSS(nx,ny,hd,f0,sec,parm);
     disp(['Sim:' num2str(i/n)])
@@ -83,11 +84,11 @@ XY = kern.XY;
 Sigma_d = Sigma.d(:);
 dens = kern.dens(:);
 
-E1 = nan(sum(id),parm.n_real);
-E2 = nan(numel(kern.dens),parm.n_real);
+E1 = nan(sum(id),parm.n_real*n);
+E2 = nan(numel(kern.dens),parm.n_real*n);
 
 
-parfor i_real=1:parm.n_real
+parfor i_real=1:parm.n_real*n
    r = Res(:,:,i_real);
    gamma_x = variogram_gridded_perso(r);
    E1(:,i_real) = gamma_x(id)-Gamma_t_id;
@@ -97,9 +98,10 @@ disp('Error Computed')
 
 
 try
-    clear OF1 OF2
-    parfor i_t = 1:size(parm.aggr.T,1)
-        ii_t=i_t:size(parm.aggr.T,1):parm.n_real;
+    OF1=nan(size(parm.aggr.T,1),1);
+    OF2=nan(size(parm.aggr.T,1),1);
+    for i_t = 1:size(parm.aggr.T,1)
+        ii_t=i_t;%:size(parm.aggr.T,1):parm.n_real;
         OF1(i_t) = sqrt(mean(mean(E1(:,ii_t),2).^2));
         OF2(i_t) = sqrt(mean(mean(E2(:,ii_t),2).^2));
     end
@@ -107,5 +109,5 @@ catch
     %save(['result-BSGS/' filename],'Res','parm','kern','Nscore','E1','E2')
 end
 
-save(['result-BSGS/' filename],'parm','E1','E2','OF1','OF2')
+save(['result-BSS/' filename],'parm','E1','E2','OF1','OF2')
 disp('file written')
