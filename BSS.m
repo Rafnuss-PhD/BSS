@@ -239,7 +239,7 @@ for i_real=1:parm.n_real
     Res=nan(ny,nx);
     Res(hd.id) = hd.d;
     rng(parm_seed_U);
-    U=normcdf(randn(ny,nx));
+    U=rand(ny,nx);
     for i_scale = 1:sn
         for i_pt = start(i_scale)+(1:nb(i_scale))
             n = ~isnan(NEIGH(i_pt,:));
