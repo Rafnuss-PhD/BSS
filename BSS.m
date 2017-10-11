@@ -251,14 +251,10 @@ for i_real=1:parm.n_real
             w = aggr_fx(i_real,i_pt/sum(nb),parm.aggr);
             
             fa = f0.^0 .* fkrig.^(1-w) .* fsec.^w;
+            assert(~any(isnan(fa)))
             
-            cfa = cumsum(fa) ./ sum(fa);
-            if ~all(diff(cfa)>0)
-                cfa = cfa +  linspace(0,numel(cfa)*eps*2,numel(cfa))';
-                assert(all(diff(cfa)>0))
-            end
-
-            Res(path(i_pt)) =  interp1(cfa, sec.axis, U(i_pt),'pchip');
+            cfa = cumsum(fa+eps) ./ sum(fa(1:end-1)+eps);
+            Res(path(i_pt)) =  interp1(cfa, sec.axis, U(i_pt),'linear');
            
             if 0==1
                 figure(3); clf; hold on;
