@@ -1,4 +1,4 @@
-function [Rest, t, k, parm] = BSS(nx,ny,hd,f0,sec,parm)
+function [Rest,ww, t, k, parm] = BSS(nx,ny,hd,f0,sec,parm)
 
 tik.global = tic;
 %% * *INPUT CEHCKING*
@@ -10,7 +10,7 @@ tik.global = tic;
 % Paramter settings
 if ~isfield(parm, 'seed_path'),     parm.seed_path      = 'shuffle'; end
 if ~isfield(parm, 'seed_U'),        parm.seed_U         = 'shuffle'; end
-if ~isfield(parm, 'seed_search'),   parm.seed_U         = 'shuffle'; end
+if ~isfield(parm, 'seed_search'),   parm.seed_search    = 'shuffle'; end
 if ~isfield(parm, 'saveit'),        parm.saveit         = 0; end % bolean, save or not the result of simulation
 if ~isfield(parm, 'name'),          parm.name           = ''; end % name use for saving file
 if ~isfield(parm, 'n_real'),        parm.n_real         = 1; end
@@ -44,7 +44,7 @@ hd.scale=nan(hd.n,1);
 % Secondary variable
 assert(all(size(sec.pdf)==[numel(sec.axis) nx*ny]), 'sec.pdf in not ok')
 
-
+% assert(size(parm.aggr.T,2)<3)
 
 %% 1. Creation of the grid an path
 [Y, X] = ndgrid(1:ny,1:nx);
@@ -235,7 +235,8 @@ tik.real = tic;
 Rest = nan(ny,nx,parm.n_real);
 parm_seed_U = parm.seed_U;
 
-parfor i_real=1:parm.n_real
+
+for i_real=1:parm.n_real
     Res=nan(ny,nx);
     Res(hd.id) = hd.d;
     rng(parm_seed_U);
@@ -248,19 +249,14 @@ parfor i_real=1:parm.n_real
             
             fsec = sec.pdf(:,path(i_pt));
             
-            w = aggr_fx(i_real,i_pt/sum(nb),parm.aggr);
+            w = aggr_fx(i_real,i_pt/sum(nb),parm.aggr,i_scale/sn);
+            
             
             fa = f0.^0 .* fkrig.^(1-w) .* fsec.^w;
             
             cfa = cumsum([0 ; fa(2:end-1)+eps ; eps]) ./ (sum(fa(2:end-1)+eps));
             Res(path(i_pt)) =  interp1(cfa, sec.axis, U(i_pt),'linear');
             
-            if isnan(Res(path(i_pt)))
-                cfa
-                sec.axis
-                U(i_pt)
-                error('er')
-            end
            
             if 0==1
                 figure(3); clf; hold on;
@@ -296,7 +292,7 @@ disp(['Run finished in ' num2str(t.global*60)] )
 end
 
 
-function w = aggr_fx(i_real,x, aggr)
+function w = aggr_fx(i_real, x, aggr, s)
 
 
 i_t = mod(i_real,size(aggr.T,1));
@@ -316,16 +312,19 @@ switch aggr.method
         end
     case 'linear'
         if (x<aggr.T(i_t,1))
-            w  =0;
+            w  = aggr.T(i_t,3);
         elseif (x>aggr.T(i_t,2))
-            w = 1;
+            w = aggr.T(i_t,4);
         else 
-            w = ( aggr.T(i_t,2)-x ) / (aggr.T(i_t,2)-aggr.T(i_t,1));
+            w =  aggr.T(i_t,3) + ( x - aggr.T(i_t,1) )/(aggr.T(i_t,2)-aggr.T(i_t,1)) * (aggr.T(i_t,4)-aggr.T(i_t,3));
         end
     case 'sigmoid'
         a = aggr.T(i_t,1);
         b = aggr.T(i_t,2);
         w = (atan(a*b) - atan(b*(a -  x )))/(atan(a*b) - atan(b*(a - 1)));
+    case 'mg'
+        i_s = ceil(s*size(aggr.T,2));
+        w = aggr.T(i_t,i_s);
     otherwise
         error('no Aggr method defined')  
 end

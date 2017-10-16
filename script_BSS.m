@@ -1,23 +1,3 @@
-%% SCRIPT_BSS.m
-% This file contain the script which can run the entire algorithm. It is
-% where the main options/parameters are set and the main fonctions are
-% lauch.
-%
-% # DATA CREATION : Data are created either by reading mat file or
-% generated with physical relationship. 
-% # BSS : Baysian Sequential Simulation
-% # PLOT : Graphical visualisation of data
-%
-%
-% Variable naming convension:
-% * rho     : Electrical resisitivity [\omega.m]
-% * sigma   : Electrical conductivity = 1/rho [mS/m]
-% * phi     : Porosity [-]
-% * K       : Hydraulic conductivity [m/s]
-%
-% * *Author:* Raphael Nussbaumer (raphael.nussbaumer@unil.ch)
-
-
 clc; % clear the command line
 addpath(genpath('./.'));  % Add folder and sub-folder to path
 dbstop if error  % activate debug in error
@@ -202,6 +182,8 @@ for i_real=1:parm.n_real
 end
 subplot(1,2,2); imagesc(kern.axis_prim, kern.axis_sec ,mean(dens,3))
 
+
+
 %% Weight 
 % parm.aggr.method='cst';
 % parm.aggr.T = (0:.1:1)';
@@ -242,7 +224,7 @@ Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
 Gamma_t_id = Gamma_t(id);
 XY = kern.XY;
 Sigma_d = Sigma.d(:);
-dens = kern.dens(:);
+dens = kern.dens(:)./sum(kern.dens(:));
 
 E1 = nan(sum(id),parm.n_real*n);
 E2 = nan(numel(kern.dens),parm.n_real*n);
@@ -252,7 +234,8 @@ parfor i_real=1:parm.n_real*n
    r = Res(:,:,i_real);
    % gamma_x = variogram_gridded_perso(r);
    % E1(:,i_real) = gamma_x(id)-Gamma_t_id;
-   E2(:,i_real) = ksdensity([Sigma_d r(:)],XY)-dens;
+   dens_r =ksdensity([Sigma_d r(:)],XY);
+   E2(:,i_real) = dens_r./sum(dens_r) - dens;
 end
 disp('Error Computed')
 
@@ -272,8 +255,9 @@ end
 save(['result-BSS/' filename],'parm','E1','E2','OF1','OF2')
 disp('file written')
 
-
 %% Plot
+
+scatter(OF1,OF2,'filled')
 
 filenames={'ResCst0-1','ResStep0-1'};
 
@@ -283,12 +267,9 @@ for i=1:numel(filenames)
     scatter(OF1,OF2,'filled')
     text(OF1+.001,OF2+.0002,strread(num2str(parm.aggr.T'),'%s'))
 end
-load(['result-BSGS\ResA01.mat'], 'OF1', 'OF2','parm');OF1_2=OF1;OF2_2=OF2; T=parm.aggr.A;
-load(['result-BSGS\ResA01_2.mat'], 'OF1', 'OF2','parm');
-OF1=[OF1(2:end) OF1_2];
-OF2=[OF2(2:end) OF2_2];
+
 T=[parm.aggr.A(2:end) T];
-scatter(OF1,OF2,'filled')
+
 
 
 scatter(sqrt(mean((gamma_x_s(id)-Gamma_t_id).^2)),sqrt(mean((ksdensity([Sigma.d(:) log(K_true(:))],parm.kernel.XY)-parm.kernel.dens(:)).^2)),'filled')
@@ -302,3 +283,5 @@ for i_t = 1:size(parm.aggr.T,1)
     ii_t=i_t:size(parm.aggr.T,1):parm.n_real;
     plot(mean(E1(:,ii_t),2))
 end
+
+
