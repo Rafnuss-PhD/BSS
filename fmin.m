@@ -55,7 +55,9 @@ end
 OF1_range=[.01 .36];
 OF2_range=[3.4 10]*10^(-5);
 
-out = (OF1-OF1_range(1))/(range(OF1_range)) + (OF2-OF2_range(1))/(range(OF2_range));
+out1 = (OF1-OF1_range(1))./(range(OF1_range))
+out2 = (OF2-OF2_range(1))./(range(OF2_range))
+out = out1 + out2
 
 end
 

@@ -9,6 +9,7 @@ sec.axis = Nscore.forward(kern.axis_prim);
 
 parm.k.covar = gen.covar;
 parm.k.covar.range0 = fliplr(gen.covar.range0) ./ [grid_gen.dy grid_gen.dx];
+parm.k.covar = kriginginitiaite(parm.k.covar);
 
 parm.k.wradius = 1.3;
 parm.k.lookup = false;
@@ -189,7 +190,7 @@ disp(['Weights Computed in ' num2str(t.weight*60)] )
 
 
 %% Prepare OF
-id = grid_gen.x<parm.k.covar(1).range0(1).*parm.k.wradius;
+id = grid_gen.x<parm.k.covar(1).range0(2).*parm.k.wradius;
 Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
 Gamma_t_id = Gamma_t(id);
 XY = kern.XY;
@@ -199,11 +200,13 @@ dens = kern.dens(:)./sum(kern.dens(:));
 
 
 %% Run Fminc
-parm.n_real=48;
+parm.n_real=4;
 
-parm.aggr.method='linear';
+parm.aggr.method='cst';
 
 OF = @(T) fmin(T,parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
+
+OF([2]');
 
 
 T0 = [0.0097    0.1019   0.7863 0.3586 ]; % T_1, T_2 w_1 w_2,
@@ -224,7 +227,7 @@ options = optimoptions('fmincon','Display','iter-detailed','Diagnostics','on','M
 x = fmincon(OF,T0,A,b,[],[],lb,ub,[],options)
 
 
-options = optimoptions(@particleswarm,'PlotFcn',,'Display','iter','UseVectorized',true);
+options = optimoptions(@particleswarm,'PlotFcn','Display','iter','UseVectorized',true);
 x = particleswarm(OF,4,lb,ub);
 
 
