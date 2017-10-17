@@ -199,17 +199,22 @@ dens = kern.dens(:)./sum(kern.dens(:));
 
 
 %% Run Fminc
-parm.n_real=4;
+parm.n_real=48;
+
+parm.aggr.method='linear';
+
 OF = @(T) fmin(T,parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
 
 
-T0 = [0.0097    0.1019    0.3586    0.7863]; % T_1, T_2 w_min w_max, 
+T0 = [0.0097    0.1019   0.7863 0.3586 ]; % T_1, T_2 w_1 w_2,
+T0 = [0.99    0.991   0.999 0.62 ]; % T_1, T_2 w_1 w_2,
+T0 = [0    0    .5    .5]; % T_1, T_2 w_min w_max,
 out = OF(T0);
 
-out = OF([3 NaN 1 NaN]);
+out = OF(T0);
 out = OF([3 NaN 0 NaN]);
 
-A=[1 -1 0 0 ; 0 0 1 -1];
+A=[1 -1 0 0 ; 0 0 -1 1];
 b=[0;0];
 lb=[0 0 0 0];
 ub=[1 1 1 1];
@@ -223,6 +228,9 @@ options = optimoptions(@particleswarm,'PlotFcn',,'Display','iter','UseVectorized
 x = particleswarm(OF,4,lb,ub);
 
 
+options = optimoptions(@simulannealbnd,'PlotFcn',{@saplotbestf, @saplotbestx, @saplotf, @saplotx, @saplotstopping , @saplottemperature},'Display','iter','PlotInterval',10);
+x = simulannealbnd(OF,T0,lb ,ub,options);
 
-options = optimoptions(@simulannealbnd,'PlotFcn',{@saplotbestf, @saplotbestx, @saplotf, @saplotx, @saplotstopping , @saplottemperature},'Display','iter');
-x = simulannealbnd(OF,T0,lb,ub,options);
+
+options = optimoptions(@patternsearch,'PlotFcn',{@psplotbestf, @psplotmeshsize, @psplotfuncount, @psplotbestx},'Display','iter','PlotInterval',1);
+x = patternsearch(OF,T0,A,b,[],[],lb,ub,[],options);

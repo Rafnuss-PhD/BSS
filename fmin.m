@@ -21,7 +21,8 @@ parfor i_real=1:parm.n_real
             w = aggr_fx(i_real,i_pt/sum(nb),parm.aggr,i_scale/sn);
             
             
-            fa = f0.^0 .* fkrig.^(1-w) .* fsec.^w;
+            fa = f0.^(-w) .* fkrig .* fsec.^w;
+            fa=fa./sum(fa);
             
             cfa = cumsum([0 ; fa(2:end-1)+eps ; eps]) ./ (sum(fa(2:end-1)+eps));
             Res(path(i_pt)) =  interp1(cfa, sec.axis, U(i_pt),'pchip');
@@ -80,10 +81,10 @@ switch aggr.method
     case 'linear'
         if (x<aggr.T(i_t,1))
             w  = aggr.T(i_t,3);
-        elseif (x>aggr.T(i_t,2))
-            w = aggr.T(i_t,4);
-        else 
+        elseif (x<aggr.T(i_t,2))
             w =  aggr.T(i_t,3) + ( x - aggr.T(i_t,1) )/(aggr.T(i_t,2)-aggr.T(i_t,1)) * (aggr.T(i_t,4)-aggr.T(i_t,3));
+        else 
+            w = aggr.T(i_t,4);
         end
     case 'sigmoid'
         a = aggr.T(i_t,1);
