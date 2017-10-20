@@ -6,6 +6,7 @@ data_gen/data/
 dummy
 subamd.sh
 *Server*
+*.asv
 
 #################
 ## Eclipse
