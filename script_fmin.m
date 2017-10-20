@@ -200,9 +200,9 @@ dens = kern.dens(:)./sum(kern.dens(:));
 
 
 %% Run Fminc
-parm.n_real=4;
+parm.n_real=48*6;
 
-parm.aggr.method='cst';
+parm.aggr.method='linear';
 
 OF = @(T) fmin(T,parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
 
@@ -210,8 +210,8 @@ OF([2]');
 
 
 T0 = [0.0097    0.1019   0.7863 0.3586 ]; % T_1, T_2 w_1 w_2,
-T0 = [0.99    0.991   0.999 0.62 ]; % T_1, T_2 w_1 w_2,
-T0 = [0    0    .5    .5]; % T_1, T_2 w_min w_max,
+T0 = [0.9    1   0.9 0.1 ]; % T_1, T_2 w_1 w_2,
+T0 = [0.3    0.6    .3    .6]; % T_1, T_2 w_min w_max,
 out = OF(T0);
 
 out = OF(T0);
@@ -223,17 +223,157 @@ lb=[0 0 0 0];
 ub=[1 1 1 1];
 
 options = optimoptions('fmincon','Display','iter-detailed','Diagnostics','on','MaxFunctionEvaluations',100,...
-'PlotFcn',{@optimplotx, @optimplotfval , @optimplotstepsize  });
+'PlotFcn',{@optimplotx, @optimplotfval , @optimplotstepsize  },'UseParallel',true);
 x = fmincon(OF,T0,A,b,[],[],lb,ub,[],options)
 
 
-options = optimoptions(@particleswarm,'PlotFcn','Display','iter','UseVectorized',true);
+options = optimoptions(@particleswarm,'PlotFcn',@pswplotranges,'Display','iter','UseVectorized',true);
 x = particleswarm(OF,4,lb,ub);
 
 
-options = optimoptions(@simulannealbnd,'PlotFcn',{@saplotbestf, @saplotbestx, @saplotf, @saplotx, @saplotstopping , @saplottemperature},'Display','iter','PlotInterval',10);
-x = simulannealbnd(OF,T0,lb ,ub,options);
+options = optimoptions(@ga,'PlotFcn',{@gaplotbestf , @gaplotbestindiv, @gaplotexpectation, @gaplotrange},'Display','iter','UseVectorized',true);
+x = ga(OF,4,A,b,[],[],lb,ub,[],options);
+x = [0.4782    0.8233    0.6332    0.3947];
 
+options = optimoptions(@simulannealbnd,'PlotFcn',{@saplotbestf, @saplotbestx, @saplotf, @saplotx, @saplotstopping , @saplottemperature},'Display','iter','PlotInterval',10);
+x = simulannealbnd(OF,x,lb ,ub,options);
+x = [0.5556    0.3521    0.5614    0.5666];
 
 options = optimoptions(@patternsearch,'PlotFcn',{@psplotbestf, @psplotmeshsize, @psplotfuncount, @psplotbestx},'Display','iter','PlotInterval',1);
 x = patternsearch(OF,T0,A,b,[],[],lb,ub,[],options);
+
+%% Metroplis H
+
+parm.aggr.method='mg';
+parm.n_real=48*6;
+OF = @(T) fmin(T,parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
+
+n_pool=48;
+parpool(n_pool);
+
+nsamples = 14*60;
+T=cell(n_pool,1);
+L=cell(n_pool,1);
+Acc=cell(n_pool,1);
+U=cell(n_pool,1);
+
+parfor i_pool=1:n_pool
+
+    T{i_pool}=nan(nsamples,sn);
+    T{i_pool}(1,:) = unifrnd(0,1,1,sn);
+    L{i_pool}=nan(nsamples,1);
+    Acc{i_pool} = zeros(nsamples,1);
+    U{i_pool}=rand(nsamples);
+    
+    best=1;
+    T_b=T{i_pool}(1,:);
+    L_b=OF(T_b);
+
+    for i = 1:nsamples
+        T{i_pool}(i,:) = max(0,min(1,normrnd(T_b,.1)));
+        L{i_pool}(i) = OF(T{i_pool}(i,:));
+        if U{i_pool}(i)<=min(L{i_pool}(i)/L_b,1)
+            best=i;
+            Acc{i_pool}(i) = 1;
+        end
+    end
+    
+    
+end
+
+t=reshape([T{:}],size(T{1},1),size(T{1},2),n_pool);
+l=[L{:}];
+acc=[Acc{:}];
+
+
+save('result-BSS/MH_1.mat','nsamples','T','L','parm','Acc')
+
+figure(1);clf; hold on;
+for i_pool=1:n_pool
+    plot(mean(T{i_pool}(Acc{i_pool}==1,:)))
+end
+
+for i_pool=1:min(5,n_pool)
+    %subplot(2,3,i_pool); hold on;
+    %plot(T{i_pool}(Acc{i_pool}==1,:)')
+    %plot(mean(T{i_pool}(Acc{i_pool}==1,:)),'--k','linewidth',2)
+    %subplot(2,3,6); hold on;
+    plot(mean(T{i_pool}(Acc{i_pool}==1,:)))
+end
+
+figure(2); clf;
+thr=.4;
+for i_s=1:sn
+    subplot(2,5,i_s); hold on; xlabel(num2str(i_s))
+    tis = reshape(t(:,i_s,:),nsamples*n_pool,1);
+    scatter(tis(l(:)>thr),l(l(:)>thr),'.k')
+end
+
+
+figure(3); clf;
+for i_s=1:sn
+    subplot(2,5,i_s); hold on; xlabel(num2str(i_s))
+    tis = reshape(t(:,i_s,:),nsamples*n_pool,1);
+    histogram(tis(acc(:)==1))
+    axis tight;
+end
+
+%% Metroplis 2
+
+
+n_pool=48;
+parpool(n_pool);
+
+n_param=10;
+
+for i_n_param=1:n_n_parm % number of param to calibrate
+    
+    T_best <- T_best % upodate the size of T_best
+    
+    for i_i_param = 1:i_n_param % each of param to calibrate
+        
+        parm.n_real=48;
+        OF = @(T) fmin(T,parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
+
+        tested = 0; acc=0; var=1;
+        
+        while acc/tested>.3
+            
+            % Perturbation of the ith param with a var var and block
+            % between 0 and 1
+            T_cand(i_i_param) = mod(normrnd(T_best(i_i_param),var),1);
+
+            L_cand = OF(T_cand);
+            tested = tested+1;
+            if rand()<=min(L_cand/L_b,1)
+                L_b = L_cand;
+                T_best = T_cand;
+                acc = acc+1;
+            end
+            
+            var = var/tested
+            
+        end
+        
+    end
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

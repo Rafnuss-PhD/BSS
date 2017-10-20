@@ -5,7 +5,7 @@ Rest = nan(ny,nx,parm.n_real);
 parm.aggr.T = T; % w_min w_max, T_1, T_2
 parm_seed_U = 'shuffle';
 
-parfor i_real=1:parm.n_real
+for i_real=1:parm.n_real
     Res=nan(ny,nx);
     Res(hd.id) = hd.d;
     rng(parm_seed_U);
@@ -21,7 +21,7 @@ parfor i_real=1:parm.n_real
             w = aggr_fx(i_real,i_pt/sum(nb),parm.aggr,i_scale/sn);
             
             
-            fa = f0.^(-w) .* fkrig .* fsec.^w;
+            fa = f0.^0 .* fkrig.^(1-w) .* fsec.^w;
             fa=fa./sum(fa);
             
             cfa = cumsum([0 ; fa(2:end-1)+eps ; eps]) ./ (sum(fa(2:end-1)+eps));
@@ -35,7 +35,7 @@ end
 
 E1 = nan(sum(id),parm.n_real);
 E2 = nan(numel(kern.dens),parm.n_real);
-parfor i_real=1:parm.n_real
+for i_real=1:parm.n_real
    r = Rest(:,:,i_real);
    gamma_x = variogram_gridded_perso(r);
    E1(:,i_real) = gamma_x(id)-Gamma_t_id;
@@ -55,9 +55,11 @@ end
 OF1_range=[.01 .36];
 OF2_range=[3.4 10]*10^(-5);
 
-out1 = (OF1-OF1_range(1))./(range(OF1_range))
-out2 = (OF2-OF2_range(1))./(range(OF2_range))
-out = out1 + out2
+out1 = (OF1-OF1_range(1))./(range(OF1_range));
+out2 = (OF2-OF2_range(1))./(range(OF2_range));
+
+out = exp( -3*(out1+out2) );
+
 
 end
 
