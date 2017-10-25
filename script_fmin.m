@@ -319,45 +319,122 @@ for i_s=1:sn
 end
 
 %% Metroplis 2
-
-
-n_pool=48;
-parpool(n_pool);
-
-n_param=10;
-
-for i_n_param=1:n_n_parm % number of param to calibrate
-    
-    T_best <- T_best % upodate the size of T_best
-    
-    for i_i_param = 1:i_n_param % each of param to calibrate
         
-        parm.n_real=48;
-        OF = @(T) fmin(T,parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
-
-        tested = 0; acc=0; var=1;
         
-        while acc/tested>.3
+parm.n_real=4;
+var=1;
+
+%n_pool=48;
+%parpool(n_pool);
+
+n_parm=10;
+
+T=cell(n_parm,1);
+OF=cell(n_parm,1);
+OFr=cell(n_parm,1);
+A=cell(n_parm,1);
+
+n_last_iter=6;
+
+
+for i1=1:n_parm % number of param to calibrate
+    
+    T{i1} = cell(i1,1);
+    OF{i1} = cell(i1,1);
+    OFr{i1} = cell(i1,1);
+    A{i1} = cell(i1,1);
+    
+    if i1==1
+        T{i1}{1} = .5 ;
+        [OF{i1}{1}, OFr{i1}{1}] = fmin(T{i1}{1},parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
+        A{i1}{1} = 1 ;
+        disp('Initialized the first test case')
+    else
+        T{i1}{1} = T{i1-1}{end}(end); % upodate the size of T_best
+        disp(['Changed to new level with ' num2str(i1) ' params'])
+    end
+    
+    for i2 = 1:i1 % each of param to calibrate
+        
+        if i2~=1
+            disp(['Changed to the ' num2str(i2) 'th parameters of the ' num2str(i1) ' from this level'])
+            T{i1}{i2} = T{i1}{i2-1}(end);
+            OF{i1}{i2} = OF{i1}{i2-1}(end);
+            OFr{i1}{i2} = OFr{i1}{i2-1}(end);
+            A{i1}{i2} = 1;
+        end
+
+        condition=1;
+        
+        last=1;
+        cur=2;
+        i_var=0;
+        var = exp(i_var);
+        while condition 
+            disp(['New test nb ' num2str(cur) ' | parameters: ' num2str(i2) '/' num2str(i1)])
+            if (mod(cur,n_last_iter)==0)
+                dacc_ratio = mean(A{i1}{i2}(cur-n_last_iter+1:cur-1));
+                if dacc_ratio > .5 % accept too much -> reduce variance
+                    i_var = i_var-1; 
+                elseif dacc_ratio < .1 % reject too much -> increase variance
+                    i_var = i_var-1; %
+                end
+                var = exp(i_var);
+                disp(['dacc_ratio=' num2str(dacc_ratio) ' | var=' num2str(var)])
+                if i_var<-5
+                    condition=0;
+                end
+            end
             
             % Perturbation of the ith param with a var var and block
             % between 0 and 1
-            T_cand(i_i_param) = mod(normrnd(T_best(i_i_param),var),1);
+            T{i1}{i2}(cur,:) = mod(normrnd(T{i1}{i2}(last,:),var),1);
+            disp(['New T=' num2str(T{i1}{i2}(cur,:)) ' | Last T =' num2str(T{i1}{i2}(last,:))])
+            
 
-            L_cand = OF(T_cand);
-            tested = tested+1;
-            if rand()<=min(L_cand/L_b,1)
-                L_b = L_cand;
-                T_best = T_cand;
-                acc = acc+1;
+            [OF{i1}{i2}(cur), OFr{i1}{i2}(cur)] = fmin(T{i1}{i2}(cur,:),parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
+            
+            while abs(OF{i1}{i2}(cur) - OF{i1}{i2}(last)) < abs(OFr{i1}{i2}(cur))+abs(OFr{i1}{i2}(last))
+                 parm.n_real = parm.n_real*2;
+                 disp(['Update the number of real to: ' num2str(parm.n_real)])
+                 if parm.n_real >500
+                    condition = 0;
+                    disp('Too many real, stop the current parameter');
+                    continue
+                 end
+                 [OF{i1}{i2}(last),OFr{i1}{i2}(last)] = fmin(T{i1}{i2}(last,:),parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
+                 [OF{i1}{i2}(cur),OFr{i1}{i2}(cur)] = fmin(T{i1}{i2}(cur,:),parm,ny,nx,sn,start,nb,LAMBDA,NEIGH,S,sec,path,f0,id,kern,Gamma_t_id,Sigma_d,XY,dens,hd);
             end
             
-            var = var/tested
             
+            if OF{i1}{i2}(cur) < OF{i1}{i2}(last)
+                last = cur;
+                A{i1}{i2}(cur)=1;
+                disp(['Accepted with OF=' num2str(OF{i1}{i2}(cur)) ' +/- ' num2str(OFr{i1}{i2}(cur))]);
+            else
+                A{i1}{i2}(cur)=0;
+            end
+            
+            
+%             if sum(A{i1}{i2}) >= n_last_iter
+%                 y=OF{i1}{i2}(A{i1}{i2});
+%                 y=y(en-n_last_iter:end);
+%                 x=(1:n_last_iter)';
+%                 slope = x'\y;
+%                 ttest = ( (slope-0)*sqrt(n_last_iter-2) )/sqrt( sum((y-slope).^2) / sum( ( x-mean(x) ).^2 ));
+%                 
+%                 if (ttest< threasold)
+%                     condition=0;
+%                 end
+%             end
+            
+            cur=cur+1;
         end
         
     end
 
 end
+
 
 
 
