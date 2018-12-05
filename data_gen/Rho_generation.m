@@ -222,7 +222,7 @@ Sigma.dy_raw = [diff(Sigma.y_raw(1:2)) diff(Sigma.y_raw(1:end-1)+.5*diff(Sigma.y
 
 Sigma.x = grid.x;
 Sigma.y = grid.y;
-Sigma.xy = grid.xy;
+%Sigma.xy = grid.xy;
 
 
 

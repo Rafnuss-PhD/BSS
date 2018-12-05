@@ -166,7 +166,7 @@ id = grid_gen.x<parm.k.covar(1).range0(1).*parm.k.wradius*3;
 Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
 plot(grid_gen.x(id), Gamma_t(id),'--k')
 for i_real=1:parm.n_real
-    gamma_x = variogram_gridded_perso(Res(:,:,i_real));
+    gammea_x = variogram_gridded_perso(Res(:,:,i_real));
     plot(grid_gen.x(id), gamma_x(id))
 end
 gamma_x = variogram_gridded_perso(reshape(Nscore.forward(log(K_true(:))),ny,nx));

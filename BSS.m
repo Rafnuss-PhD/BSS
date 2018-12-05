@@ -34,7 +34,7 @@ if ~isfield(parm, 'mg'),            parm.mg              = 1; end
 % Hard data
 hd.x=hd.x(:); hd.y=hd.y(:); hd.d=hd.d(:); 
 if ~isfield(hd, 'n'),            hd.n              = numel(hd.d); end
-if ~isfield(hd, 'id'),          
+if ~isfield(hd, 'id')          
     hd.id = sub2ind([ny nx],hd.y,hd.x);
 else
     hd.id=hd.id(:);
