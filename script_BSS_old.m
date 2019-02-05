@@ -85,7 +85,7 @@ end
 % kern.axis_prim = min(K_true_log_list(:)):dK:max(K_true_log_list(:));
 
 [kern.prior, kern.axis_prim] = ksdensity(K_true_log_list(:));
-[~ , axis_sec] = ksdensity(Sigma_d_list(:));
+[~ , kern.axis_sec] = ksdensity(Sigma_d_list(:));
 
 [X,Y] = meshgrid(kern.axis_sec, kern.axis_prim);
 kern.XY = [X(:),Y(:)];
@@ -100,6 +100,8 @@ for i_files = 1: numel(files)
 end
 
 kern.dens = reshape(mean(jpdf,3),numel(kern.axis_prim), numel(kern.axis_sec));
+
+
 
 save(['result-BSGS/' file],'-append','kern');
 
@@ -164,7 +166,7 @@ id = grid_gen.x<parm.k.covar(1).range0(1).*parm.k.wradius*3;
 Gamma_t = (1-parm.k.covar(1).g(grid_gen.x/parm.k.covar(1).range(1)))';
 plot(grid_gen.x(id), Gamma_t(id),'--k')
 for i_real=1:parm.n_real
-    gammea_x = variogram_gridded_perso(Res(:,:,i_real));
+    gamma_x = variogram_gridded_perso(Res(:,:,i_real));
     plot(grid_gen.x(id), gamma_x(id))
 end
 gamma_x = variogram_gridded_perso(reshape(Nscore.forward(log(K_true(:))),ny,nx));
