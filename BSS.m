@@ -1,4 +1,4 @@
-function [Rest,ww, t, k, parm] = BSS(nx,ny,hd,f0,sec,parm)
+function [Rest, w, t, k, parm] = BSS(nx,ny,hd,f0,sec,parm)
 
 tik.global = tic;
 %% * *INPUT CEHCKING*
@@ -296,7 +296,7 @@ function w = aggr_fx(i_real, x, aggr, s)
 
 
 i_t = mod(i_real,size(aggr.T,1));
-if i_t==0;
+if i_t==0
     i_t=size(aggr.T,1);
 end
 assert(x<=1,'error')
